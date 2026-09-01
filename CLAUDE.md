@@ -1,6 +1,6 @@
 # Project conventions (read first)
 
-Binding documents, in order: **STANDING_RULES.md** (inference, gates, git — never weakened), **PROJECT.md** (question, phasing, sample, pitfalls, exploration stance), and the active **rounds/ROUND_NN.md** (named in the STATUS.md header).
+Binding documents, in order: **STANDING_RULES.md** (inference, gates, git — never weakened) together with **OPENSKY_TRINO_RULES.md** (T1–T9: all OpenSky access via `code/opensky_query.py`, partition filters enforced by code, attended-only, one query at a time — violation risks a ban), **PROJECT.md** (question, phasing, sample, pitfalls, exploration stance), and the active **rounds/ROUND_NN.md** (named in the STATUS.md header).
 
 ## Layout
 

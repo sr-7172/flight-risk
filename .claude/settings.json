@@ -48,7 +48,10 @@
       "Bash(git clean:*)",
       "Bash(sudo:*)",
       "WebFetch",
-      "WebSearch"
+      "WebSearch",
+      "Bash(trino:*)",
+      "Bash(trino *)",
+      "Bash(*trino --server*)"
     ]
   },
   "hooks": {

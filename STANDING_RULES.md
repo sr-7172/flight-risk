@@ -28,6 +28,10 @@ These bind every agent in every round. Round files incorporate them by reference
 
 Each round lives in its own folder `rounds/round-NN-<slug>/` containing the work order (`ROUND_NN.md`), ALL of the round's outputs (CSVs, figures, TeX; `figures/`/`tables/` subfolders allowed), and `ROUND_NN_FINDINGS.md` written at round close per the contract in rounds/ROUND_TEMPLATE.md: plain-language narrative for a coauthor with zero context (toddler-level method explanations), traced numbers only, the complete list of scripts created/edited this round (reconciled against git), and a **Suggested next steps** section. That section replaces the old auto-drafted next-round file: /plan-round seeds from the latest findings (plus any human edits to it). The validator and run-log builder scan `rounds/round-*/` directory-wide; `rounds/*/legacy_quarantine/` holds superseded artifacts.
 
+## OpenSky Trino discipline (binds every agent)
+
+16. **OPENSKY_TRINO_RULES.md (T1–T9) is part of these standing rules.** All Trino access goes through `code/opensky_query.py`, whose partition-column, chunk-size, bound, and serial-execution guards are never edited or bypassed; unattended runs never query live; `code/98_check_trino_usage.py` must exit 0 at every round close. A task that cannot be completed within T1–T9 is BLOCKED, not worked around — OpenSky bans violators and a ban ends the project's data access.
+
 ## Spec CSV schema
 
 Every regression output CSV carries: `spec`, `outcome`, `variable`, `coef`, `se`, `pval`, `n_obs`, `cluster_level`, `stars_source` (which p-value column stars were derived from) — plus any SE-menu columns a task specifies (e.g., `se_hc1`, `se_cl1`, `se_cl2`, `se_wcb`, `pval_wcb`).

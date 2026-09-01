@@ -9,6 +9,7 @@ You implement empirical-finance pipeline code for a PhD research project. Your w
 ## Repo conventions (do not deviate)
 
 - Numbered script directories; parquet intermediaries in data/interim/; `utils.setup_logger` / `utils.log_merge`; `sys.path.insert` imports; outputs as CSVs with one row per coefficient.
+- OpenSky: OPENSKY_TRINO_RULES.md T1–T9 bind you. Never import pyopensky/trino/traffic; use `code/opensky_query.py` (`OpenSkyClient`), never edit its guards, and never query live in an unattended run — read `data/raw/opensky/` and mark BLOCKED if missing. A guard rejection means your SQL is wrong, not that the guard is.
 - ALL round outputs (CSVs, figures, TeX) go INSIDE the active round's folder `rounds/round-NN-<slug>/` at the exact paths the task names — never to a top-level output/ (it does not exist in this pack) and never into another round's folder. Scripts take output paths pointing into the round folder.
 - Code patches to existing scripts as targeted edits, not wholesale rewrites.
 - Every spec CSV carries the standard schema (STANDING_RULES.md): `spec`, `outcome`, `variable`, `coef`, `se`, `pval`, `n_obs`, `cluster_level`, `stars_source`, plus any SE-menu columns the task specifies.

@@ -48,6 +48,7 @@ Re-run the validation script, re-check every task's verdict is PASS or properly 
 - every number in it is locatable in a CSV in that folder at the cited `(file, row/spec)` — spot-check at least 5;
 - the "scripts created or edited" list reconciles with `git log`/`git diff` over the round's commits — a script touched but unlisted, or listed but untouched, is a FAIL;
 - the required sections (including Suggested next steps) are present, and the register is genuinely plain-language (methods glossed), not PhD shorthand;
+- `python code/98_check_trino_usage.py` exits 0; if the round pulled OpenSky data, `logs/opensky_queries.log` exists, every SEND line shows a partition predicate, no query exceeded the soft limit without a halved follow-up chunk, and no pull happened in an unattended session (T8) — any of these failing is a FAIL that outranks task completion;
 - human-readable/PROJECT_STATE.md was refreshed this round (mtime/newer commit), contains no untraced numbers, and PRESENTATION.md was not modified by agents (git diff clean unless the human edited it); MIN_SCRIPTS.md header timestamp is from `code/sync_min_scripts.py` this round.
 Then write a final section:
 
