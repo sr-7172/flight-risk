@@ -1,0 +1,41 @@
+{
+  "name": "flight-risk",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "anthropic.claude-code"
+      ]
+    }
+  },
+
+  // One command, four jobs: ownership of the persisted volumes, OpenSky
+  // credential restore (pyopensky reads ~/.config/pyopensky/settings.conf;
+  // the master copy lives in the shared secrets volume so every rebuild and
+  // every future workspace picks it up), the python env, and the Claude CLI.
+  // Each stage tolerates absence so a fresh machine still builds cleanly.
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.claude /home/vscode/.secrets 2>/dev/null; if [ -f /home/vscode/.secrets/pyopensky_settings.conf ]; then mkdir -p /home/vscode/.config/pyopensky && install -m 600 /home/vscode/.secrets/pyopensky_settings.conf /home/vscode/.config/pyopensky/settings.conf; fi; pip install uv && { [ -f pyproject.toml ] && uv sync || echo 'no pyproject.toml; skipping uv sync'; }; curl -fsSL https://claude.ai/install.sh | bash; { sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended latexmk > /dev/null; } || echo 'texlive install failed — paper/slides compile on Overleaf instead'",
+
+  "remoteEnv": {
+    "PATH": "/home/vscode/.local/bin:${containerEnv:PATH}",
+    "DISABLE_AUTOUPDATER": "1"
+  },
+
+  // Two named volumes, shared across ALL workspaces on this machine:
+  //   claude-config    — CLI credentials + user-level state.
+  //   research-secrets — ~/.secrets/pyopensky_settings.conf (OpenSky Trino
+  //                      credentials) and ~/.secrets/ntfy_topic, written
+  //                      once per machine, picked up everywhere. WRDS pgpass
+  //                      may also live here for other projects; this
+  //                      project does not use it.
+  "mounts": [
+    "source=claude-config,target=/home/vscode/.claude,type=volume",
+    "source=research-secrets,target=/home/vscode/.secrets,type=volume"
+  ],
+
+  "remoteUser": "vscode"
+}

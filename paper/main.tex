@@ -1,0 +1,48 @@
+% Compiled with: latexmk -pdf -interaction=nonstopmode main.tex
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,booktabs,graphicx,setspace,caption}
+\usepackage[longnamesfirst]{natbib}
+\usepackage[hidelinks]{hyperref}
+\onehalfspacing
+\bibliographystyle{jf} % swap for target journal; jf.bst not in texlive-core — fall back:
+% \bibliographystyle{plainnat}
+
+\title{Working Title\thanks{Author affiliation and acknowledgments. Draft — do not circulate.}}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent 100--150 words: question, setting, identification in one clause, headline magnitude with units, mechanism claim no stronger than the evidence.
+\end{abstract}
+
+\section{Introduction}
+% Contribution stated by page 2. Lead with the raw-data fact, then the baseline estimate.
+
+\section{Related literature}
+% Built from docs/LIT_NOTES.md — COMPETES papers addressed head-on.
+
+\section{Data}
+
+\section{Empirical strategy}
+% The estimating equation, the identifying assumption in one sentence, and the threat/defense pairs.
+
+\section{Results}
+% Figures from paper/figures/, tables generated into paper/tables/ — never hand-typed.
+% \begin{figure}[!htbp]\centering\includegraphics[width=.8\textwidth]{figures/raw_fact.pdf}\caption{}\label{fig:raw}\end{figure}
+% \input{tables/baseline.tex}
+
+\section{Robustness}
+% Includes nulls, failed placebos, and open flags per STANDING_RULES.md rule 15.
+
+\section{Conclusion}
+
+\bibliography{references}
+
+\appendix
+\section{Additional results}
+
+\end{document}

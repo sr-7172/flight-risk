@@ -1,0 +1,41 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# data: raw vendor extracts and intermediates never enter git
+data/raw/**
+!data/raw/.gitkeep
+data/interim/**
+!data/interim/.gitkeep
+*.parquet
+
+# run machinery
+watchdog.log
+.stop_gate_count
+.remediation_active
+.ntfy_topic
+.run_command
+run.log
+
+# secrets never in the repo (they live in the research-secrets volume)
+.env
+*.pgpass
+
+# misc
+.DS_Store
+
+# LaTeX build junk (paper/, slides/) — sources and final PDFs are committed
+*.aux
+*.bbl
+*.blg
+*.out
+*.toc
+*.nav
+*.snm
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+__pycache__/
+*.pyc

@@ -1,0 +1,26 @@
+[project]
+name = "flight-risk"
+version = "0.2.0"
+description = "Flight Risk: bilateral geoeconomic indicator from excess airborne time (agents + gates pack v2)"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas>=2.2",
+    "numpy",
+    "pyarrow",
+    "duckdb",
+    "pyfixest>=0.24",
+    "wildboottest",
+    "statsmodels",
+    "linearmodels",
+    "matplotlib",
+    "pyopensky>=2.14",
+    "requests",
+    "python-dotenv",
+    "tqdm",
+    "openpyxl",
+]
+
+[tool.uv]
+# uv sync creates uv.lock on first run inside the container.
+# pyopensky pulls the Trino client; credentials come from
+# ~/.config/pyopensky/settings.conf (restored by the devcontainer).
