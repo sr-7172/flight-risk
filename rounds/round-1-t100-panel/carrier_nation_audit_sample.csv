@@ -1,0 +1,81 @@
+unique_carrier,carrier_name,nation_iso2,match_method,departures,home_country_dep_share,top_endpoint_country,n_openflights_candidates,candidate_names,flag_home_share_zero,sample_group
+AC,Air Canada,CA,iata,1972479.0,0.9960658643260587,CA,1,Air Canada (Canada),False,top40_by_departures
+QK,Jazz Aviation LP,CA,iata,1134565.0,1.0,CA,1,Air Canada Jazz (Canada),False,top40_by_departures
+BA,British Airways Plc,GB,iata,934509.0,0.980925812378479,GB,1,British Airways (United Kingdom),False,top40_by_departures
+AM,Aeromexico,MX,iata,708971.0,0.9987376070389339,MX,1,AeroMéxico (Mexico),False,top40_by_departures
+LH,Lufthansa German Airlines,DE,iata,678287.0,0.9533796165929761,DE,2,Lufthansa (Germany); Lufthansa Cargo (Germany),False,top40_by_departures
+MX (1),Compania Mexicana De Aviaci,MX,iata,577673.0,0.9940052590306281,MX,1,Mexicana de Aviaci (Mexico),False,top40_by_departures
+WS,Westjet,CA,iata,560487.0,0.9998233678925649,CA,1,WestJet (Canada),False,top40_by_departures
+AF,Compagnie Natl Air France,FR,iata,489568.0,0.9012496731812537,FR,1,Air France (France),False,top40_by_departures
+KE,Korean Air Lines Co. Ltd.,KR,iata,462993.0,0.8709634918886463,KR,1,Korean Air (Republic of Korea),False,top40_by_departures
+JL,Japan Air Lines Co. Ltd.,JP,iata,433651.0,0.9511219851908562,JP,2,Japan Airlines (Japan); Japan Airlines Domestic (Japan),False,top40_by_departures
+VS,Virgin Atlantic Airways,GB,iata,373457.0,0.9987709428394701,GB,1,Virgin Atlantic Airways (United Kingdom),False,top40_by_departures
+Y4,Concesionaria Vuela Compania De Aviacion SA de CV (Volaris),MX,iata,354940.0,1.0,MX,1,Volaris (Mexico),False,top40_by_departures
+TA,Taca International Airlines,CR,iata,347572.0,0.0037833887654931926,SV,1,Grupo TACA (Costa Rica),False,top40_by_departures
+CM,Compania Panamena (Copa),PA,iata,344979.0,0.9700677432539372,PA,1,Copa Airlines (Panama),False,top40_by_departures
+ZX,Air Georgian,CA,name_exact,304761.0,0.9999507811038814,CA,1,Air Georgian (Canada),False,top40_by_departures
+KL,Klm Royal Dutch Airlines,NL,iata,259033.0,0.9597850466928924,NL,1,KLM Royal Dutch Airlines (Netherlands),False,top40_by_departures
+CX,Cathay Pacific Airways Ltd.,HK,iata,253033.0,0.841890188236317,HK,1,Cathay Pacific (Hong Kong SAR of China),False,top40_by_departures
+PD,Porter Airlines Limited (PACL),CA,iata,228419.0,1.0,CA,1,Porter Airlines (Canada),False,top40_by_departures
+CI,China Airlines Ltd.,TW,iata,224625.0,0.8869493600445186,TW,1,China Airlines (Taiwan),False,top40_by_departures
+KV,Sky Regional Airlines Inc.,RU,iata,222939.0,0.0,CA,1,Kavminvodyavia (Russia),True,top40_by_departures
+BR,Eva Airways Corporation,TW,iata,220103.0,0.984225567120848,TW,1,EVA Air (Taiwan),False,top40_by_departures
+NH,All Nippon Airways Co.,JP,iata,217636.0,0.9998483706739694,JP,1,All Nippon Airways (Japan),False,top40_by_departures
+JM,Air Jamaica Limited,JM,iata,208767.0,0.954461193579445,JM,1,Air Jamaica (Jamaica),False,top40_by_departures
+EI,Aer Lingus Plc,IE,iata,193529.0,0.9668731817970433,IE,1,Aer Lingus (Ireland),False,top40_by_departures
+RV,Air Canada rouge LP,IR,iata,191266.0,0.0,CA,1,Caspian Airlines (Iran),True,top40_by_departures
+IB,Iberia Air Lines Of Spain,ES,iata,187249.0,0.748308402181053,ES,1,Iberia Airlines (Spain),False,top40_by_departures
+SQ,Singapore Airlines Ltd.,SG,iata,185770.0,0.22720030144802714,SG,2,Singapore Airlines (Singapore); Singapore Airlines Cargo (Singapore),False,top40_by_departures
+LA,LATAM Airlines Group SA dba Lan Airlines,CL,iata,178515.0,0.4077920622916842,CL,1,LAN Airlines (Chile),False,top40_by_departures
+BW,Caribbean Airlines Limited,TT,iata,176498.0,0.4772405353035162,TT,1,Caribbean Airlines (Trinidad and Tobago),False,top40_by_departures
+UP,Bahamasair Holding Limited,BS,iata,175789.0,0.999237722496857,BS,1,Bahamasair (Bahamas),False,top40_by_departures
+SK,Scandinavian Airlines Sys.,SE,iata,168365.0,0.25011730466545895,DK,1,Scandinavian Airlines System (Sweden),False,top40_by_departures
+AZ,Italia Transporto Aereo S.P.A DBA ITA S.P.A,IT,iata,168300.0,0.99825311942959,IT,1,Alitalia (Italy),False,top40_by_departures
+EK,Emirates,AE,iata,153212.0,0.8906351982873404,AE,1,Emirates (United Arab Emirates),False,top40_by_departures
+TK,Turk Hava Yollari A.O.,TR,iata,150198.0,0.9600860197872142,TR,1,Turkish Airlines (Turkey),False,top40_by_departures
+QF,Qantas Airways Ltd.,AU,iata,149004.0,0.7817642479396526,AU,1,Qantas (Australia),False,top40_by_departures
+FI,Icelandair,IS,iata,146955.0,0.9922357184172026,IS,1,Icelandair (Iceland),False,top40_by_departures
+5D,Aerolitoral,MX,name_exact,145841.0,1.0,MX,1,Aerolitoral (Mexico),False,top40_by_departures
+LX,Swiss International Airlines,CH,iata,139005.0,0.9996906586094025,CH,1,Swiss International Air Lines (Switzerland),False,top40_by_departures
+QT,Transportes Aereos Mercantiles Panamericanos S.A,CO,iata,122762.0,0.9024535279646796,CO,1,TAMPA (Colombia),False,top40_by_departures
+LR,Lacsa,CR,iata,119061.0,0.4382039458764835,CR,1,LACSA (Costa Rica),False,top40_by_departures
+BG,Biman Bangladesh Airlines,BD,iata,2531.0,0.02765705254839984,BE,1,Biman Bangladesh Airlines (Bangladesh),False,random40_seed42
+PR,Philippine Airlines Inc.,PH,iata,92299.0,0.9268897821211497,PH,1,Philippine Airlines (Philippines),False,random40_seed42
+Z0,Norse Atlantic UK Ltd,AR,iata,5630.0,0.0,GB,1,All Argentina Express (Argentina),True,random40_seed42
+VP,Viacao Aerea Sao Paulo,BR,iata,13621.0,0.7398135232361794,BR,1,VASP (Brazil),False,random40_seed42
+OR,TUI Airlines Nederland B.V.,NL,iata,4251.0,0.9381322041872501,NL,1,Arkefly (Netherlands),False,random40_seed42
+AE,Air Europe Limited,TW,iata,596.0,0.0,GB,1,Mandarin Airlines (Taiwan),True,random40_seed42
+LS,Jet2.com,GB,iata,333.0,1.0,GB,1,Jet2.com (United Kingdom),False,random40_seed42
+9T,"TravelspanGT, Inc. S.A.",CA,iata,578.0,0.0,TT,1,Transwest Air (Canada),True,random40_seed42
+PH,Polynesian Airlines Ltd.,WS,iata,87299.0,0.9941465537978671,WS,1,Polynesian Airlines (Samoa),False,random40_seed42
+8R,Edelweiss Air Ag,BR,iata,5039.0,0.0,CH,1,TRIP Linhas A (Brazil),True,random40_seed42
+GW (1),Central American Airlines,RU,iata,310.0,0.0,NI,1,Kuban Airlines (Russia),True,random40_seed42
+2P,"Air Philippines Corp d/b/a Airphil Express, Philippines Airlines",PH,iata,165.0,1.0,PH,1,Air Philippines (Philippines),False,random40_seed42
+ZS,Hispaniola Airways,SA,iata,39.0,0.0,DO,1,Sama Airlines (Saudi Arabia),True,random40_seed42
+EXC,Hapag-Lloyd Executive GmbH,SE,icao,18.0,0.0,DE,1,European Executive Express (Sweden),True,random40_seed42
+NQ,Air Japan Co,JP,iata,11657.0,1.0,JP,1,Air Japan (Japan),False,random40_seed42
+PTQ,Pontair Ltd.,US,icao,123.0,0.0,ES,1,Port Townsend Airways (United States),True,random40_seed42
+CRV,Acropolis Aviation Ltd.,CI,icao,444.0,0.0,GB,1,Cargo Ivoire (Ivory Coast),True,random40_seed42
+SR,Swissair Transport Co. Ltd.,CH,iata,68675.0,0.9651983982526392,CH,1,Swissair (Switzerland),False,random40_seed42
+RTQ,Aerotour Dominicano Cxa,FR,icao,715.0,0.0,DO,1,Air Turquoise (France),True,random40_seed42
+EY,Etihad Airways,AE,iata,48896.0,0.9688318062827225,AE,1,Etihad Airways (United Arab Emirates),False,random40_seed42
+GE,Lufthansa Cargo Airlines,TW,iata,2.0,0.0,DE,1,TransAsia Airways (Taiwan),True,random40_seed42
+W8,Cargojet Airways Ltd.,CA,iata,62943.0,0.5502597588294171,CA,1,Cargojet Airways (Canada),False,random40_seed42
+VW,Transportes Aeromar S.A de C.V,MX,iata,4149.0,1.0,MX,1,Aeromar (Mexico),False,random40_seed42
+OK,Czech Airlines,CZ,iata,11345.0,0.9245482591449978,CZ,1,Czech Airlines (Czech Republic),False,random40_seed42
+SMQ,Serv. Aerolineas Mexicanas,TJ,icao,734.0,0.0,MX,1,Samar Air (Tajikistan),True,random40_seed42
+K8,Dutch Caribbean Airlines,ZM,iata,25319.0,0.0,AN,2,Airlink Zambia (Zambia); Zambia Skyways (Zambia),True,random40_seed42
+VJT,VistaJet Limited,CA,icao,17409.0,0.03463725659141823,GB,1,Vistajet (Canada),False,random40_seed42
+AI,National Aviation Company of India Limited d/b/a Air India,IN,iata,78845.0,0.6394064303380049,IN,1,Air India Limited (India),False,random40_seed42
+TN,Air Tahiti Nui,FR,iata,36969.0,0.2993318726500582,PF,1,Air Tahiti Nui (France),False,random40_seed42
+C8,Cargolux Italia SpA,US,iata,4011.0,0.0,LU,2,Chicago Express (United States); Chicago Express (C8) (United States),True,random40_seed42
+WGT,Volkswagen AirSevice GmbH dba Volkswagon,GB,icao,308.0,0.16233766233766234,DE,1,Lion Air Services (United Kingdom),False,random40_seed42
+7Z,Lb Limited,CV,iata,35840.0,0.0,BS,1,Halcyonair (Cape Verde),True,random40_seed42
+JK,Spanair S.A.,ES,iata,2595.0,1.0,ES,1,Spanair (Spain),False,random40_seed42
+R3,Air Company Yakutia,RU,iata,138.0,1.0,RU,1,Aircompany Yakutia (Russia),False,random40_seed42
+AR,Aerolineas Argentinas,AR,iata,48007.0,0.8568333784656404,AR,1,Aerolineas Argentinas (Argentina),False,random40_seed42
+HX,Hong Kong Airlines Limited,HK,iata,4268.0,1.0,HK,1,Hong Kong Airlines (Hong Kong SAR of China),False,random40_seed42
+OS,Austrian Airlines,AT,iata,63261.0,0.9370386177897915,AT,1,Austrian Airlines (Austria),False,random40_seed42
+PE,Air Europe S.P.A.,IT,iata,335.0,0.9850746268656716,IT,1,Air Europe (Italy),False,random40_seed42
+APQ,Alas De Transporte International,US,icao,620.0,0.0,DO,1,Aspen Aviation (United States),True,random40_seed42
+NOS,Neos S.P.A,IT,icao,1427.0,1.0,IT,1,Neos (Italy),False,random40_seed42

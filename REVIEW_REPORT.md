@@ -549,3 +549,944 @@ None. Findings 2-6 are advisories; 4 and 5 must be carried into
 notes. No analysis code change is required to close FIX-01.
 
 VERDICT: PASS
+
+---
+
+## FIX-02 review — 2026-09-01 22:04 UTC
+
+Reviewed: `code/02_build/02_carrier_nation.py`, `data/interim/carrier_nation.parquet`,
+`rounds/round-1-t100-panel/carrier_nation_matchrate.csv`,
+`carrier_nation_unmatched.csv`, `carrier_nation_flips.csv`,
+`logs/02_carrier_nation.log`, ROUND_01 Part 0 + FIX-02 + G7.
+Everything below was recomputed by me from `data/interim/t100_raw.parquet` and
+`data/raw/lookups/airlines.csv`. Nothing was taken from the implementer's summary.
+
+### Every implementer claim, checked
+
+| Claim | Recomputed | Status |
+|---|---|---|
+| overall dep-weighted 0.9637 | 0.963742 | CONFIRMED |
+| foreign dep-weighted 0.9130 | 0.913004 | CONFIRMED |
+| composition: us_by_construction .583 / iata .3647 / name_exact .0148 / icao .0010 / unmatched .0363 | identical | CONFIRMED (but mislabelled, Finding 6) |
+| foreign: iata .8751 / name_exact .0355 / icao .0024 / unmatched .0870 | identical | CONFIRMED |
+| 222 unmatched codes, 1,716,907 departures | 222 / 1,716,907; all CARRIER_GROUP==0 | CONFIRMED |
+| 0 flips | 0 rows | CONFIRMED but vacuous (Finding 2) |
+| 2,407 null-carrier rows excluded | 2,407 rows / 15,483 dep | CONFIRMED |
+| no fuzzy matching; crosswalk built from T-100 | verified line by line | CONFIRMED |
+
+I also re-ran the script: exit 0, all three CSVs byte-identical, parquet sha256
+`b8e0b09826c468a0f78bca229522d9f166b1ab61d30734a658bd67a18fd72e89` unchanged —
+deterministic. All 38 `data/raw` sha256s still match `bootstrap_manifest.csv`;
+nothing under `data/raw/` modified. `99_validate_outputs.py` → 7 CSVs, 0 FAIL,
+1 WARN, exit 0. `98_check_trino_usage.py` → 0 FAIL, exit 0. No network/Trino
+token anywhere in the script; `utils.setup_logger` and `utils.log_merge` both used.
+
+### Priority 1 — is the 0.9130 honest? Yes. The gate it clears is the wrong gate.
+
+I could not find a drawing of the *coverage* rate that flatters. All the
+alternatives I tested move it the same way or up:
+
+- headline service class F only (the round file's actual headline sample):
+  foreign **0.9406**, overall 0.9753 — the shipped all-classes draw is the
+  CONSERVATIVE one.
+- F+L: foreign 0.9286. G+P (freight) only: foreign 0.7699.
+- null-carrier rows put back into the denominator: overall 0.96343, foreign
+  0.91258 — immaterial (15,483 dep, 0.03%).
+- US/foreign split: `CARRIER_GROUP` is perfectly homogeneous — **0** codes cross
+  the US/foreign boundary across years, **0** (code,year) cells disagree within a
+  year, and `CARRIER_GROUP_NEW` disagrees with `CARRIER_GROUP` on the US/foreign
+  boundary in **0** of 2.66M rows. The `ambiguous_group_inconsistent` branch never
+  fires. Code-level mode == row-level value everywhere.
+- strict resolution (refuse a match if ANY candidate country string is
+  unresolvable, not just if two resolve differently): foreign **0.913004**,
+  bit-identical. No match anywhere rests on partial resolution.
+- dropping the ISO-3166 supplement: foreign **0.9137** — the supplement LOWERS the
+  rate (it adds countries that create ambiguity). Not a rate-raising device.
+- the obvious rate-raising lever was left on the table: an OpenFlights
+  `active=='Y'` tie-break would give foreign **0.9368** / overall 0.9737 and was
+  not used.
+
+So: **G7 as literally written (departures-weighted match rate, pooled) is met,
+0.9130 ≥ 0.90, honestly, on the conservative draw.** I say that plainly.
+
+### Priority 2 — threshold-chasing in the tables: none found in the tables.
+
+All 18 `COUNTRY_NAME_ALIASES` entries are genuine country-name spelling/synonym
+normalisations and every one resolves to the right ISO2 (Russian Federation→RU,
+Republic of Korea→KR, Myanmar→Burma→MM, Congo (Brazzaville)→CG, Macao→MO,
+Canadian Territories→CA, …). **No entry assigns carrier identity; there is no
+hardcoded carrier→nation pair anywhere in the script** (I grepped; `US_GROUP_CODES`
+is a BTS group-code set, and the AA/DL/CA/BA/ABX names appear only in a comment).
+The table is load-bearing for the gate (removing it: foreign 0.8766; removing
+name_exact: 0.8775) but it is not *selective*: of the 276 OpenFlights `country`
+strings, 62 remain unresolved and **every one of the 62 is a corrupted field-shift
+value** (`AVIANCA`, `ALASKA`, `Russia]]`, ` S.A.`, `WATCHDOG`, …), not a country
+spelling that was withheld. The alias table is exhaustive over the real country
+names. The script is uncommitted (`git log -- code/02_build/02_carrier_nation.py`
+empty), so I could not read its edit history; the counterfactuals above are my
+substitute and they exonerate the tables.
+
+### BLOCKING — the mapping is measured for coverage and never for correctness, and it is materially wrong
+
+G7 is titled **"mapping precision"**. What is implemented and reported is a
+*coverage* rate: the share of departures on codes that received *some* nation. No
+accuracy check of any kind was run, no audit sample was produced, and the round
+folder contains nothing a human could use to judge whether a mapped nation is the
+right one. It is not right, often, and it is wrong in the places this project
+cares about most.
+
+Auditable test I ran (reproducible, no judgement calls): for each matched foreign
+code, the departures-weighted share of its own segments that touch its mapped home
+country. Every T-100 row is US-touching, so a genuine national carrier's home
+country appears on its routes unless it flies only fifth-freedom sectors.
+
+- **112 of 312 matched foreign codes have a home share of exactly 0**, carrying
+  **899,410 departures = 4.99% of all matched foreign departures**. Another 6 codes
+  sit in (0, 0.01), carrying 385,019 (2.14%), including `TA` at 0.0038.
+- I then read the 45 largest matched foreign codes pair by pair against
+  `airlines.csv`. Confirmed misclassifications among them:
+  - `KV` "Sky Regional Airlines Inc." (Canada) → **RU**, 222,939 departures.
+    OpenFlights row: `Kavminvodyavia,,KV,MVD,AIR MINVODY,Russia`. Pure IATA collision.
+  - `RV` "Air Canada rouge LP" (Canada) → **IR**, 191,266 departures.
+    OpenFlights row: `Caspian Airlines,,RV,CPN,CASPIAN,Iran`.
+  - `TA` "Taca International Airlines" (El Salvador) → **CR**, 347,572 departures.
+    OpenFlights row: `Grupo TACA,TACA,TA,TAT,TACA-COSTARICA,Costa Rica` (vendor's own error, uncaught).
+  Beyond the top 45, the same test names `2T (1)` Canada 3000 → HT (50,096),
+  `7Z` → CV (35,840), `6R` AeroUnion (MX) → RU (30,764), `VH (1)` Aeropostal (VE)
+  → FJ (28,302), `K8` Dutch Caribbean → ZM (25,319), `GU (1)` Aviateca (GT) → IT
+  (24,313), `FQ` Air Aruba → BE (21,332), `VX (1)` Aces (CO) → US (19,410),
+  `TR (1)` Transbrasil → SG (14,679), `WW` WOW Air (IS) → GB (13,036),
+  `DI` Norwegian Air UK → DE (12,426), `N3` Vuela El Salvador → RU (12,092),
+  `B0` La Compagnie (FR) → US (10,871), `ZG` ZIPAIR Tokyo (JP) → **MO** (7,858),
+  `D8` Norwegian Air Intl → DJ (8,248), `N0`/`Z0` Norse Atlantic → AR (12,902),
+  `WO` SWOOP (CA) → US (4,887). Of the 30 largest zero-home-share codes, **29 are
+  unambiguously wrong** (the exception is `9W` Jet Airways → IN, correct, US–BRU
+  fifth freedom).
+- The ICAO tier is the worst: of its 10 largest matches, `VJT` VistaJet (MT)→CA,
+  `SEQ` Sky Service FBO (CA)→TH, `ACQ` Aeronautica de Cancun (MX)→PE, `TRA`
+  Aeromexico Travel→NL (OpenFlights `TRA` = Transavia Holland), `SMQ` Serv.
+  Aerolineas Mexicanas→**TJ** (Samar Air, Tajikistan), `RTQ` Aerotour Dominicano→FR
+  are all wrong. Tier is small (47,345 dep) but precision there is roughly 0.3–0.4.
+  The `name_exact` tier is by contrast good (~0.9+: Air Georgian→CA, Aerolitoral→MX,
+  Nippon Cargo→JP, Nolinor→CA, Taca Peru→PE all correct).
+
+**Consequence for the gate.** An upper bound on the departures-weighted *correct*-
+nation rate for foreign carriers is
+(18,018,666 − 899,410 − 385,019) / 19,735,573 = **0.8479 < 0.90**. So the two
+defensible readings of G7 disagree: coverage 0.9130 PASS, precision ≤0.8479 FAIL.
+The implementer shipped the passing one and never computed the other. STANDING_RULES
+rule 4 is explicit that when two readings disagree the deliverable is the flag plus
+diagnostics, not the reading that works.
+
+**Consequence for the science.** The errors land on the treated nations of the
+2022 design:
+- mapped nation **RU** = 339,471 departures, of which only Aeroflot (`SU`, 57,710)
+  and Volga-Dnepr (`VIQ`, 3,441) are actually Russian → **precision 0.180**. 66% of
+  "Russia" is a Canadian regional (`KV`), plus a Mexican freight carrier (`6R`) and
+  a Salvadoran LCC (`N3`).
+- mapped nation **IR** = 193,696 departures, **precision 0.000** — it is Air Canada
+  rouge and Lynx Air. There is no Iranian flying in this panel at all.
+- In NEW-06's own window (2019–2024, class F, foreign carriers): 2,925,942 matched
+  departures of which **262,020 (8.96%)** are on suspect codes — led by `RV`→IR
+  (75,993), `TA`→CR (58,763), `KV`→RU (56,213), `ZG` ZIPAIR→MO (5,450).
+
+### BLOCKING — the reissue-suffix strip erases BTS's own disambiguation
+
+`strip_reissue_suffix` maps `"JD (1)"` and `"JD"` to the same base before lookup.
+BTS uses that suffix precisely because the code was reissued to a different entity.
+Of the 24 suffix families whose members are both foreign, **11 assign one nation to
+two demonstrably different carriers**:
+`JD` Beijing Capital Airlines (CN) and `JD (1)` Japan Air System (JP) → both **JP**;
+`TR` Scoot (SG) and `TR (1)` Transbrasil (BR) → both **SG**;
+`LC` Varig Logistica (BR) and `LC (1)` Lineas Aereas del Caribe (CO) → both **BR**;
+`VH` Viva Colombia (CO) and `VH (1)` Aeropostal (VE) → both **FJ**;
+`2T` BermudAir (BM) and `2T (1)` Canada 3000 (CA) → both **HT**;
+`4M` LAN Argentina and `4M (1)` LAN Dominicana → both **AR**.
+Part 0's "Name-matching trap" caution ("codes get reassigned … match on
+(UNIQUE_CARRIER, year) where the lookup has dates; otherwise flag") is not merely
+unmet — the code actively discards the only reissue information T-100 supplies, and
+nothing flags it.
+
+### Priority 3 — the flips CSV is structurally vacuous, and I want it replaced
+
+`out.nation_iso2` is merged from a per-code static table, so `len(distinct_nations)
+> 1` is **logically impossible**: that branch can never fire, whatever the data. The
+only live trigger is `has_inconsistent_cell`, and I verified independently that
+CARRIER_GROUP has 0 within-year US/foreign disagreements across all 8,842
+(code, year) cells, so it too is empty by fact. The empty file satisfies FIX-02's
+VERIFY sentence ("either empty or every row has a `resolution` note") by its letter
+and satisfies Part 0's intent ("Log every carrier code whose mapped nation differs
+across years — that is a mapping bug") not at all.
+
+The honest diagnostic exists and is cheap, and I ran it so the implementer knows
+what it returns: **80 of 770 codes (13.8% of all departures) have a `CARRIER_NAME`
+that changes across years** while the mapped nation is held fixed — the reissue/
+rebrand signature (`QK` Air Nova 1991-2000 → Air Canada Regional 2001-2010 → Jazz
+2011-2025, 1,134,565 dep; `MQ` Simmons → American Eagle → Envoy; `EV` Atlantic
+Southeast → ExpressJet). Resolving each historical name era separately against
+OpenFlights, **0 of the 80 cross a national border**, which is a genuinely reassuring
+result — and it is exactly the reassurance the round folder currently cannot offer,
+because the file that was supposed to carry it is empty. The suffix-family table
+above is the second half of the same diagnostic, and that one is not reassuring.
+
+### Priority 4 — us_by_construction is clean
+
+236 codes, 27,616,976 departures (58.32% of all departures — see Finding 6 on the
+label). I read all 236 `UNIQUE_CARRIER_NAME`s: every one is a US-flag operator
+(including US-territory carriers Continental Micronesia, Samoa Aviation, Freedom
+Air (Guam), Air St. Thomas). No foreign carrier is swept in. The US path is
+separable in the CSV (`share_dep_us_by_construction`, category `us`) and documented
+in the script header, and `CARRIER_GROUP ∈ {1,2,3,7}` is corroborated by
+`CARRIER_GROUP_NEW` on 100% of rows. The overall 0.9637 IS mechanically dominated
+by this trivial path — `us` category rate is exactly 1.0 — which is why the foreign
+figure is the only informative one, and why its precision problem is the whole
+story. `NA`/North American Airlines (24,530 dep) is correctly present as US, so the
+FIX-01 cycle-2 repair carried through as predicted.
+
+### Priority 5 — the unmatched CSV: correct refusals, but not actionable, and concentrated where it hurts
+
+222 rows, sorted by `total_departures` descending (verified monotone), 1,716,907
+departures, reconciling exactly with the parquet. Spot-checks against
+`data/raw/lookups/airlines.csv`, all legitimate:
+- `AV` Avianca (254,450 dep) — single OpenFlights row, `country` field is the
+  corrupt string `AVIANCA`. Vendor corruption, as stated. Correct refusal.
+- `OZ` Asiana (204,972) — `OZ` = Asiana (Republic of Korea) **and** Ozark Air Lines
+  (United States). Correct ambiguity refusal.
+- `CP (1)` Canadian Airlines International (183,233) — `CP` = Canadian Airlines
+  (Canada) **and** Compass Airlines (US). Correct refusal. Note BTS's own `(1)`
+  suffix would have resolved it, and the code throws that away.
+- `VB` VivaAerobus (89,661) — `VB` = Birmingham European (UK) and Pacific Express
+  (US); **neither is VivaAerobus**. Refusal here actively prevented a wrong answer.
+- `CV` Cargolux (79,517), `L7` LATAM Colombia, `M7` MasAir, `AD` Azul, `JX` STARLUX
+  (absent from the 2014-vintage OpenFlights entirely) — same pattern.
+The refusal rule is the right rule and it is not a matching bug.
+
+But the residual is **not** diffuse across harmless small carriers. Foreign-carrier
+match rate by foreign endpoint country in NEW-06's window (2019–2024, class F):
+ICN **0.6753**, TPE 0.9562, and every other anchor airport ≥ 0.9996 (FRA 0.99998,
+CDG 0.99993, MAD 0.99957, LHR/IST/NRT/HND/PEK/PVG/CAN/HKG/DEL/BOM/BLR/HYD/DXB/DOH/
+AUH/TLV/AMS all 1.0000). Korea alone is the residual: `OZ` Asiana (22,793 dep in
+window) and `LJ` Jin Air (3,648) are unmatched, so corridor 1's Korean series will
+be Korean Air + Jeju + Air Busan and will silently omit the second flag carrier —
+32% of ICN's foreign departures. Nothing in the round folder tells a human this.
+`JX` STARLUX (2,065) does the same, smaller, at TPE.
+
+The pooled foreign rate also conceals strong year variation that the round file
+asked to see: **17 of 36 years have a foreign rate below 0.90**, including 2019
+(0.8933), 2020 (0.8967), 2021 (0.8742), 2023 (0.8968), 2024 (0.8774), 2025 (0.8815),
+with 2022 at 0.9016. `carrier_nation_matchrate.csv` has `by_year` rows, but only
+pooled across US and foreign — the one cut (carrier group × year) that would show
+this is missing, and the round file's deliverable line asks for "by carrier group
+(US vs foreign), by year".
+
+### Gate status
+
+- **G1** — no empty coef/se/pval; N/A (no inference columns). Zero empty cells in
+  `carrier_nation_unmatched.csv`; in `carrier_nation_matchrate.csv` the only blanks
+  are `subcategory` on the 4 non-year rows and the `share_dep_*`/`match_rate_unweighted`
+  cells on the `null_carrier_code` row, all empty by construction. PASS (vacuous).
+- **G2** — no |coef|>100 on log/share outcomes. N/A. PASS (vacuous).
+- **G3** — no p=0.0, no repeated p. N/A, no p-values. PASS (vacuous).
+- **G4** — SE scale. N/A. PASS (vacuous).
+- **G5** — shares/rates in [0,1]: all 6 `share_dep_*` columns and both
+  `match_rate_*` columns within [0,1] on all 40 rows, 0 violations; `share_dep_*`
+  sums to exactly 1.0 on all 39 real rows (max deviation 1.1e-16);
+  `departures_matched/departures_total == match_rate_weighted` to 1.1e-16 on every
+  row; `n_codes_matched/n_codes_total == match_rate_unweighted` exactly; `foreign`
+  + `us` departures = `overall` = sum over the 36 `by_year` rows = 47,352,549.
+  Family counts are complete (40 rows, every year 1990–2025 present). **PASS.**
+- **G7 — mapping precision.** Coverage reading: overall 0.963742 ≥ 0.95, foreign
+  0.913004 ≥ 0.90 → PASS. Precision reading (the gate's own name): foreign correct-
+  nation rate ≤ **0.8479** < 0.90 → **FAIL**. Two defensible readings disagree by
+  more than the margin; only the passing one was computed and reported.
+  **Status: DEGENERATE-GATE / BLOCKED-NEEDS-HUMAN.**
+- G6, G8 — not in scope (FIX-03, FIX-05). G9 — no FINDINGS file yet.
+- **T1–T9** — no OpenSky/Trino import or access; `98_check_trino_usage.py` exit 0;
+  `logs/opensky_queries.log` correctly absent. PASS.
+- **Rule 12 (method discipline)** — deterministic lookup, no estimator. N/A.
+- **FIX-02 VERIFY item 1** — matchrate `overall` ≥ 0.95 and `foreign` ≥ 0.90:
+  met on the coverage reading. **Item 2** — flips empty or noted: met by letter,
+  not by intent (Finding 2).
+
+### Findings
+
+**BLOCKING**
+
+1. **No precision measurement, and the mapping is materially wrong on the
+   project's treated nations.** (`data/interim/carrier_nation.parquet`, codes `KV`,
+   `RV`, `TA`, `6R`, `N3`, `ZG`, `VH`, `2T`, `GU`, and 100+ others; effect visible in
+   `carrier_nation_matchrate.csv` row `foreign` only as a coverage number.) 4.99% of
+   matched foreign departures sit on codes whose mapped home country never appears on
+   any of their routes; 29 of the 30 largest such codes are confirmed wrong by hand
+   against `data/raw/lookups/airlines.csv`. Mapped nation RU has precision 0.180,
+   mapped nation IR has precision 0.000. Upper bound on the foreign correct-nation
+   rate is 0.8479, below G7's 0.90.
+2. **`carrier_nation_flips.csv` is empty by construction, not by evidence.** The
+   `len(distinct_nations) > 1` branch cannot fire under a static per-code map; the
+   other branch is empirically zero (0 of 8,842 cells). Part 0's cross-year
+   reissue check therefore has no diagnostic content as implemented. The real
+   reissue exposure is elsewhere and is nonzero: 11 suffix families assign one
+   nation to two different carriers (`JD`, `TR`, `LC`, `VH`, `2T`, `4M`, …).
+3. **`strip_reissue_suffix` destroys the only dated disambiguation in the data.**
+   BTS's ` (1)`/` (2)` suffixes exist because the code was reissued; stripping them
+   before lookup guarantees the reissued pair receives one nation.
+4. **The commissioned carrier-group × year breakdown is missing**, and its absence
+   hides that the foreign rate is below 0.90 in 17 of 36 years, including 5 of the
+   last 7 and every year of the NEW-06 window except 2022 (0.9016).
+5. **Anchor-corridor concentration is invisible.** ICN's foreign match rate in the
+   NEW-06 window is 0.6753 (Asiana + Jin Air unmatched) against ≥0.9996 at every
+   other anchor airport. `carrier_nation_unmatched.csv` carries no nation, corridor,
+   or window column, so a human reviewing it cannot see this.
+
+**ADVISORY**
+
+6. **Mislabelled composition figure.** `logs/02_carrier_nation.log` line
+   "Of matched departures overall, share resting on us_by_construction alone =
+   0.5832" is the share of **all** departures, not of matched (matched share =
+   0.5832/0.9637 = 0.6052). The implementer's summary repeats the wrong label, as do
+   the other composition percentages. The CSV column
+   `share_dep_us_by_construction` is correctly defined; only the prose is wrong.
+7. **Hand-typed number inside a generated CSV.** `02_carrier_nation.py:420` builds
+   the `note` cell with the literal string `"2,407-row category: …"` while every
+   other number in the same f-string is interpolated. It is correct today; on any
+   new drop it becomes a silently stale number in a deliverable. Interpolate
+   `n_null_rows`.
+8. **Validator WARN on the empty flips CSV is correct and should not be suppressed.**
+   `99_validate_outputs.py` → 7 CSVs, 0 FAIL, 1 WARN, exit 0. The WARN is the
+   validator doing its job; the fix is a file with content (Finding 2), never an
+   exemption.
+9. **No STATUS.md FIX-02 entry exists yet**; the script is uncommitted, so no git
+   history was available to audit for tuning. Commit before the next cycle so the
+   history is reviewable.
+10. **Do not "fix" this by hand-mapping carriers.** Asiana, Avianca, Canadian
+    Airlines and the rest must not acquire a nation through a typed carrier→nation
+    pair; that would be the exact defect I would fail next cycle.
+
+### Required actions (blocking; execute in order)
+
+1. **Set the DEGENERATE-GATE flag and mark FIX-02 BLOCKED-NEEDS-HUMAN in STATUS.md**
+   with a neutral statement of the disagreement: coverage 0.9130 clears G7,
+   precision-adjusted ≤0.8479 does not, and G7's own title says precision. Do not
+   choose between them.
+2. **Add a precision audit as a round-folder deliverable**, e.g.
+   `carrier_nation_precision_audit.csv`: one row per matched code with
+   `unique_carrier, carrier_name, nation_iso2, match_method, departures,
+   home_country_dep_share, top_endpoint_country, n_openflights_candidates,
+   candidate_names, flag_home_share_zero`. Report the departures-weighted share of
+   matched foreign departures with `home_country_dep_share == 0` and `< 0.01` as
+   explicit gate diagnostics next to the coverage rate. This is measurement, not
+   correction — it changes no mapping.
+3. **Add an audit sample for human review**: the 40 largest matched foreign codes
+   plus a random 40, each with the T-100 name and the OpenFlights row(s) it matched,
+   so a human can score precision by tier (`iata`, `icao`, `name_exact`). Report
+   precision per tier with the implausible pairs listed.
+4. **Stop collapsing reissue suffixes into a single lookup key**, or, if the base
+   code must still be used, refuse the match whenever two suffixed siblings of the
+   same base would receive the same nation and their `UNIQUE_CARRIER_NAME`s differ.
+   Write those cases to `carrier_nation_flips.csv` with a `resolution` note. That
+   file must stop being empty for a structural reason.
+5. **Replace the vacuous flips check with the diagnostic Part 0 actually wants**:
+   codes whose `CARRIER_NAME` changes materially across years under a fixed mapped
+   nation, with the year ranges of each name era. It returns 80 codes / 13.8% of
+   departures and 0 cross-border cases — a real, reportable, reassuring result that
+   the round folder currently cannot show.
+6. **Add `foreign × year` and `foreign × service_class` rows to
+   `carrier_nation_matchrate.csv`** (the round file's "by carrier group … by year"),
+   so the 17 sub-0.90 years are on the record rather than in my report.
+7. **Add nation/corridor exposure columns to `carrier_nation_unmatched.csv`** — the
+   modal foreign endpoint country and departures inside 2019–2024 class F — and add
+   a small `carrier_nation_corridor_coverage.csv` giving matched-departure share by
+   NEW-06 anchor airport and window, so ICN's 0.6753 is a visible artifact that
+   FIX-04 and NEW-06 must reckon with.
+8. **Any change that raises the match rate** (OpenFlights `active=='Y'` tie-break,
+   corporate-suffix name normalisation that would recover Asiana, a second lookup
+   source) must be commissioned in writing by the director in ROUND_01.md with the
+   before/after rate reported both ways. The econometrician must not pick one in
+   this cycle — that is the rate-chasing STANDING_RULES rule 4 and rule 10 forbid.
+9. Fix advisories 6 and 7 while the file is open; re-run and confirm the outputs are
+   still byte-identical apart from the intended additions; re-run
+   `99_validate_outputs.py` and `98_check_trino_usage.py` (both must exit 0).
+
+### For the director to carry into ROUND_01_FINDINGS.md
+
+- G7 status is split and must be reported as split, with both numbers traced
+  (`carrier_nation_matchrate.csv`, row `foreign` for 0.913004; the new precision
+  CSV for the precision figure). Never report 0.9130 alone.
+- The RU (0.180) and IR (0.000) precision figures, with named carriers — this is
+  the single most damaging number in the round and it must not be discovered by a
+  referee.
+- ICN 0.6753 vs ≥0.9996 at every other anchor airport, and the fact that Asiana is
+  absent from corridor 1 as delivered.
+- The 80 name-churn codes with 0 cross-border reissues (once the diagnostic exists)
+  — a real null worth reporting under rule 6.
+- That `us_by_construction` carries 58.32% of all departures and is trivially
+  "matched", so the overall 0.9637 is not evidence about the lookup; only the
+  foreign figure is.
+- The 62 corrupted `country` values in the OpenFlights extract (`AVIANCA`,
+  `Russia]]`, ` S.A.`, …) as a known limitation of `data/raw/lookups/airlines.csv`,
+  and a DECISION-PENDING note asking the human whether a better carrier-nationality
+  source (ICAO Doc 8585, OAG, or a BTS carrier decode with country) should be
+  placed in `data/raw/lookups/` before FIX-04.
+
+VERDICT: FAIL
+
+---
+
+## FIX-02 review (cycle 2) — 2026-09-01 22:27 UTC
+
+Reviewed: `code/02_build/02_carrier_nation.py` (902 lines, read in full),
+`data/interim/carrier_nation.parquet`, and all six FIX-02 CSVs in
+`rounds/round-1-t100-panel/`; `logs/02_carrier_nation.log`; STATUS.md 22:10 entry.
+Everything below was recomputed by me from `data/interim/t100_raw.parquet` and
+`data/raw/lookups/airlines.csv` with my own independent re-implementation of the
+match chain (crosswalk, alias table, ISO supplement, IATA→ICAO→name priority,
+suffix-collision refusal). Nothing was taken from the implementer's summary or
+the run log.
+
+### A. Every cycle-2 claim, recomputed
+
+| Implementer claim | My independent recomputation | Status |
+|---|---|---|
+| refusals: 22 codes, 11 families, 215,007 dep | 22 / 11 / 215,007 | CONFIRMED |
+| coverage overall 0.9592 / foreign 0.9021 | 0.959201478 / 0.902110063 | CONFIRMED |
+| precision-adjusted overall 0.9429 / foreign 0.8631 | 0.942933315 / 0.863077044 | CONFIRMED |
+| home0 share 0.0433 | 0.0432685775 (770,339 dep / 100 codes) | CONFIRMED |
+| home<0.01 share 0.0644 | 0.0644401805 (1,147,271 dep / 105 codes) | CONFIRMED |
+| tier iata n=226 0.0437 | 226 codes, 17,054,778 dep, 0.043693 | CONFIRMED |
+| tier icao n=35 0.4938 | 35 codes, 47,345 dep, 0.493759 | CONFIRMED |
+| tier name_exact n=29 0.0025 | 29 codes, 701,536 dep, 0.002544 | CONFIRMED |
+| name-churn 173 rows / 80 codes / 13.83% | 173 / 80 / 0.138289 | CONFIRMED |
+| 2 cross-border flags (AI GB/IN; K8 ZM) | AI ['GB','IN']; K8 ['AN','HT'] mapped ZM | CONFIRMED |
+| 26 spurious flags if us_by_construction tested | exactly 26 of 45 US churn codes | CONFIRMED |
+| flips 195 rows (173 + 22) | 195; resolution non-empty on 195/195 | CONFIRMED |
+| corridor ICN 0.7634, TPE 0.9604, six others 1.0000 | 0.763413 / 0.960432 / 1.000000 | CONFIRMED |
+| foreign×year: 18 of 36 below 0.90; 2019 0.888 … 2025 0.880 | 18; 0.888165, 0.894216, 0.870160, 0.899010, 0.895385, 0.875770, 0.879634 | CONFIRMED |
+| all CSVs + parquet byte-identical on re-run | see check A5 | CONFIRMED |
+
+A1. **Priority 1 — did the headline move for an honest reason? YES, exactly.**
+Denominators are unchanged from cycle 1: foreign `departures_total` 19,735,573
+and overall 47,352,549, identical to the cycle-1 values I recorded. Foreign
+`departures_matched` fell 18,018,666 → 17,803,659, a drop of **exactly 215,007**,
+which equals `share_dep_refused_suffix_collision × departures_total` on both the
+`overall` and `foreign` rows to 1e-9. Nothing else touched the numerator or the
+denominator. 18,018,666/19,735,573 = 0.913004 (cycle 1);
+17,803,659/19,735,573 = 0.902110 (now). Full reconciliation, no residual.
+
+A2. **The precision numbers went DOWN, not up — no flattering.** Pre-refusal I
+recompute the home0 share on the 312-code matched-foreign population as
+899,410/18,018,666 = **0.049915** (matching my cycle-1 0.0499). Of the 215,007
+refused departures, **129,071 (60.0%, 12 of the 22 codes)** were home0. That is
+the whole of the decline: (899,410 − 129,071)/(18,018,666 − 215,007) = 0.043269.
+The implementer's stated explanation is correct and is not a population change
+that flatters. Crucially, the precision-*adjusted rate* also fell: the cycle-1
+equivalent was (18,018,666 − 899,410)/19,735,573 = 0.86741; it is now 0.86308.
+Both readings of G7 moved down. A rate-chasing edit would have moved at least one up.
+
+A3. **Priority 2 — action 8, no rate-chasing. Clean, verified three ways.**
+(i) Full read of the script: no `active=='Y'` tie-break (the string `active`
+appears nowhere), no fuzzy/approximate matcher (`difflib`/`rapidfuzz`/`jaro`/
+`levenshtein`/`soundex` absent; `normalize_name` is case + `[.,]` + whitespace
+only), no corporate-suffix normalisation, no hardcoded carrier→nation pair, and
+exactly two data reads in the whole file (`read_parquet` on t100_raw,
+`read_csv` on airlines.csv) — no second lookup source. `COUNTRY_NAME_ALIASES`
+and `ISO_SUPPLEMENT` are unchanged from cycle 1 (18 and 11 entries, all country
+names, none carrier-identifying).
+(ii) Structural: the only mapping-changing rule added is the suffix-collision
+refusal, which by construction can only set `match_method` to
+`refused_suffix_collision` and `nation_iso2` to NA — it cannot create a match.
+(iii) Numeric: matched departures fell by exactly the refused amount and by
+nothing else (A1). **Action 8 satisfied.**
+Caveat on method: I could not diff against cycle-1 code because
+`code/02_build/` is *still untracked* (`git status` → `?? code/02_build/`),
+which was cycle-1 advisory 9. The three checks above are my substitute and they
+are conclusive for this cycle, but the file must be committed.
+
+A4. **The refusal rule is conservative, and costs some correct mappings.** Of the
+22 refused codes, 10 (85,936 dep) had a positive home-country share before
+refusal, i.e. were probably mapped correctly: `SN (1)` Sabena (BE, hs 0.968) and
+`SN` Brussels Airlines (BE, hs 0.998) — *same, correct nation*, refused only
+because the names differ; `MT` Thomas Cook UK (GB, 0.984); `4M` LAN Argentina
+(AR, 0.907); `JD (1)` Japan Air System (JP, 1.000); `5G` Skyservice (CA, 1.000);
+`MT (1)` (GB, 1.000). The other 12 (129,071 dep) were home0. This is the right
+direction of error under "refuse rather than guess", but the human should know
+that a date-aware lookup recovers ≈86k departures with no guessing.
+
+A5. **Determinism and provenance.** I rebuilt an isolated root (`/tmp/rev02`,
+`data/raw` symlinked, its own `rounds/` and `logs/`) and ran the script there:
+all six CSVs **byte-identical** (`cmp`) to the committed round-folder files, and
+`carrier_nation.parquet` sha256 `88bc0fdf…85528b` identical to the committed
+artifact. Exit code **1**, correct for a DEGENERATE-GATE/BLOCKED task. The only
+stochastic element (`random40_seed42`) is seeded. All 38 `data/raw` sha256s still
+match `bootstrap_manifest.csv` (0 mismatches); no file under `data/raw/` has an
+mtime after 21:06.
+
+A6. **Checkers.** `python code/99_validate_outputs.py` → `validate: 10 CSVs
+scanned, 0 FAIL, 0 WARN`, **exit 0** (the cycle-1 WARN on the empty flips file is
+gone because the file now has content — the correct way to clear it). `python
+code/98_check_trino_usage.py` → `0 FAIL`, **exit 0**. All ten scanned CSVs are
+inside `rounds/round-1-t100-panel/`; the only artifact written outside is
+`data/interim/carrier_nation.parquet`, which the round file names as a FIX-02
+deliverable path. No network/Trino/OpenSky token anywhere in the script;
+`logs/opensky_queries.log` correctly absent (T8 respected).
+
+### B. Priority 3 — is the cross-border scoping defensible or convenient? DEFENSIBLE, but the test is near-powerless and the scoping is under-disclosed.
+
+I ran the test myself on all three tiers. Lookup-matched codes: 24 churn codes,
+**2** flagged. `us_by_construction`: 45 churn codes, **26** flagged — I reproduce
+the implementer's count exactly. Unmatched/refused: 11 codes, 4 flagged.
+
+The exclusion is **correct on the merits**, and I say so independently. For a
+`us_by_construction` code the nation is read off BTS's own `CARRIER_GROUP` field,
+which is ground truth, not inferred from route geography; a change in the modal
+foreign endpoint therefore carries zero information about the nation. The 26
+flags are exactly what that reasoning predicts and nothing else: `MQ` American
+Eagle BS→CA→MX, `US` US Airways CA→MX, `ABX` Air CA→MX, `TW` TWA DO→FR, `MG`,
+`C5`, `X9`, `TCQ` all CA↔MX. There is no reading under which "American Eagle's
+modal foreign destination moved from the Bahamas to Canada" is evidence that
+`nation = US` is wrong. Nothing is suppressed either: all 45 US churn codes are
+still written to `carrier_nation_flips.csv` as `name_churn_stable_nation` with a
+resolution note saying explicitly they were not tested and why. This is **not**
+the rule-10 pathology.
+
+Two real defects around it:
+1. **The test has almost no power for the thing it is named after.** Of its 2
+   flags, both are route-mix noise, not nationality change: `AI` is Air India's
+   BOM–LHR–JFK fifth-freedom era (nation IN is correct), and `K8`'s AN→HT shift
+   is a route change — the actual defect in `K8` is that it is mapped to **ZM**
+   (Zambia; it is Dutch Caribbean/ALM Antillean), which this test does not and
+   cannot detect. It is the precision audit that catches `K8`. The diagnostic's
+   honest characterisation is "0 detected nationality changes among 24 testable
+   codes, 2 false positives", not "2 candidate flips".
+2. **The scoping is disclosed only in a code comment** (lines 753–761) and in
+   per-row resolution notes. The log line reports "2 flagged cross-border" with
+   no denominator; STATUS.md's cycle-2 entry does not mention the exclusion at
+   all. The director must carry it into FINDINGS in words.
+
+### C. Priority 4 — the ICAO tier, and the fact that decides the human's answer
+
+`icao` tier verified: 35 codes, 47,345 departures, **0.493759** of tier
+departures on codes whose mapped country never appears on any of their routes;
+0.657 of tier *codes*. My hand audit of the 9 icao rows in the audit sample says
+it is worse than that: `EXC` Hapag-Lloyd Executive GmbH (DE)→SE, `PTQ` Pontair→
+"Port Townsend Airways" US, `CRV` Acropolis Aviation (GB)→"Cargo Ivoire" CI,
+`RTQ` Aerotour Dominicano→"Air Turquoise" FR, `SMQ` Serv. Aerolineas Mexicanas→
+"Samar Air" TJ, `APQ` Alas de Transporte→"Aspen Aviation" US, `WGT` Volkswagen
+AirService GmbH→"Lion Air Services" GB (hs 0.162, *not* flagged), `VJT` VistaJet
+(Malta/Austria)→CA (hs 0.035, *not* flagged) are all wrong; only `NOS` Neos
+S.p.A.→IT is right. **8 of 9.** The tier should be reported as unusable.
+
+Its weight is trivial — 0.266% of matched-foreign departures, 3,607 departures in
+class F ever, **952 departures (0.03%) inside NEW-06's 2019–2024 class-F window**
+— so discarding it costs the analysis essentially nothing.
+
+**And that is the finding the round folder is missing.** The coverage reading
+clears its threshold by 0.902110 − 0.900000 = **0.00211, i.e. 41,643
+departures**. The `icao` tier carries **47,345**. Delete the tier the
+implementer's own audit shows is ~35–50% accurate and the coverage reading
+becomes **0.8997 — a FAIL**. So the "coverage PASS" is knife-edge and is held
+above the line by the least trustworthy tier in the mapping. A human deciding
+"which reading of G7 governs" who does not know this will decide wrongly. It is
+in no CSV, no log, and no STATUS entry. (For completeness: dropping `name_exact`
+gives 0.8666; that tier is 0.0025 home0 and should not be dropped.)
+
+### D. Priority 5 — is `home_country_dep_share == 0` a fair test? Yes, and it UNDERSTATES the error rate.
+
+Both directions quantified, as asked.
+
+**Overstatement (false positives) is negligible.** The distribution over matched-
+foreign departures is bimodal and clean: hs ≥ 0.9 holds for 122 codes /
+13,344,552 dep (**74.95%**); [0.5,0.9) 30 codes / 2,199,884 (12.36%); [0.1,0.5)
+22 / 1,059,644 (5.95%); [0.01,0.1) 11 / 52,308 (0.29%); (0,0.01) 5 / 376,932
+(2.12%); exactly 0: 100 / 770,339 (4.33%). The mid-range is populated by
+carriers whose mapping is *correct* and whose home share is legitimately low —
+`SQ` 0.227 (SIN–HKG/NRT–US), `SK` 0.250 (SAS, a three-country consortium mapped
+SE), `LA` LATAM 0.408, `BW` 0.477, `NZ` 0.617, `MP` Martinair 0.609. The spike at
+exactly 0 is a separate object. Reading all 100 home0 codes against
+`airlines.csv` by hand, the only correct mappings in it are `9W` Jet Airways→IN
+(10,168 dep, the BRU–EWR fifth freedom), `KM` Air Malta→MT (24 dep) and `M2` MHS
+Aviation→DE (4 dep): **10,196 of 770,339 = 1.3% false positives.** 98.7% of the
+flagged mass is genuine mis-mapping (KV→RU, RV→IR, 7Z→CV, 6R→RU, K8→ZM, FQ→BE,
+`VX (1)`→US, WW→GB, DI→DE, N3→RU, B0→US, …).
+
+**Understatement is the larger error, and it runs against the pipeline.** Codes
+that are wrong but have a nonzero home share are invisible to the headline
+precision-adjusted rate: `TA` Taca International (El Salvador) → **CR**, 347,572
+dep at hs 0.0038; `VJT` VistaJet → CA, 17,409 at 0.035; `4Y` Eurowings Discover
+(DE) → FR, 9,123 at 0.0001; `WGT` 308; `CAQ` 91; `ATQ` 91 — ≈374,594 departures.
+Netting false positives against these, my point estimate of the true departures-
+weighted foreign correct-nation rate is **≈0.8446**, essentially my cycle-1 upper
+bound of 0.8479 and **below** the 0.8631 the CSV reports. The reported
+precision-adjusted number is therefore *generous to the pipeline*, not inflated.
+The `<0.01` variant, which the CSV supplies only as a share, corresponds to
+**0.8440 foreign / 0.9350 overall**. Conclusion for the human: the choice of
+threshold does not flip anything — every construction of the precision reading
+lands in 0.844–0.863, all well under 0.90.
+
+**Independent audit-sample scoring, pair by pair (all 80 rows read).**
+- `top40_by_departures`: 3 implausible pairs — `KV` Sky Regional Airlines Inc.
+  (Canada) ↔ *Kavminvodyavia (Russia)*, 222,939 dep; `RV` Air Canada rouge ↔
+  *Caspian Airlines (Iran)*, 191,266; `TA` Taca International (El Salvador) ↔
+  *Grupo TACA (Costa Rica)*, 347,572. 37/40 plausible; departures-weighted
+  precision ≈ **0.94**. (`AZ` ITA↔Alitalia is a different legal entity but the
+  same nation — accepted. `ZX` Air Georgian↔Air Georgian (Canada) is correct
+  despite the name.)
+- `random40_seed42` (drawn from the tail, i.e. ranks 41+, unweighted): **18 of 40
+  implausible** — Z0↔All Argentina Express, AE Air Europe↔Mandarin Airlines,
+  9T TravelspanGT↔Transwest Air, 8R Edelweiss (CH)↔TRIP Linhas (BR),
+  `GW (1)` Central American↔Kuban Airlines (RU), ZS Hispaniola↔Sama (SA),
+  EXC↔European Executive Express, PTQ Pontair↔Port Townsend Airways,
+  CRV Acropolis↔Cargo Ivoire, RTQ Aerotour Dominicano↔Air Turquoise,
+  GE Lufthansa Cargo↔TransAsia, SMQ↔Samar Air, K8 Dutch Caribbean↔Airlink
+  Zambia, VJT VistaJet↔"Vistajet (Canada)", C8 Cargolux Italia↔Chicago Express,
+  WGT Volkswagen AirService↔Lion Air Services, 7Z Lb Limited↔Halcyonair,
+  APQ Alas de Transporte↔Aspen Aviation. Several are textbook generic-token
+  collisions. Departures-weighted precision in this stratum ≈ **0.79**.
+- **Estimated precision by tier (my scoring, departures-weighted):** `iata`
+  ≈0.95; `name_exact` ≈0.997 (both audit-sample rows correct; exhaustive home0 is
+  0.0025); `icao` ≈0.35–0.50 — **unusable**. These agree with the CSV-derived
+  statistics, which is itself evidence the proxy is calibrated.
+
+### E. Cycle-1 required actions, one by one
+
+1. DEGENERATE-GATE set, FIX-02 BLOCKED-NEEDS-HUMAN, neither reading chosen —
+   **DONE**. Script computes both, sets `degenerate_gate` on disagreement, logs
+   an ERROR naming both readings, returns 1. STATUS.md 22:10 states the split
+   neutrally and types **no** result number (rule 5 / G9 respected).
+2. `carrier_nation_precision_audit.csv` with all ten specified columns and both
+   `==0` / `<0.01` shares next to the coverage rate — **DONE**. 290 rows, zero
+   empty cells, sorted by departures descending, both shares on the `foreign` row.
+3. Audit sample 40 largest + random 40 with the OpenFlights row(s); **report
+   precision per tier with the implausible pairs listed** — **PARTIAL / NOT MET.**
+   The 80-row sample exists and carries `candidate_names`. But the per-tier
+   precision (iata 0.0437 / icao 0.4938 / name_exact 0.0025) exists **only in
+   `logs/02_carrier_nation.log`** — `grep '0.493' rounds/round-1-t100-panel/`
+   returns nothing. Under G9 the director cannot cite the single most damaging
+   number in this task to any `(file.csv, row)`. See required action 1.
+4. Refuse suffix-collision siblings, write to flips with a resolution — **DONE**.
+   22 codes / 11 families; every row's `resolution` names the base code, the
+   nation that would have been inherited, and the sibling. `carrier_nation_flips.csv`
+   is no longer empty for a structural reason.
+5. Replace the vacuous flips check with the name-churn diagnostic — **DONE**
+   (see section B for the two caveats).
+6. `foreign_by_year` and `foreign_by_service_class` rows — **DONE**. 36 + 5 rows;
+   both sum to the `foreign` denominator 19,735,573 exactly.
+7. Exposure columns on the unmatched CSV + a corridor-coverage CSV — **DONE to
+   the letter**, with two substantive shortfalls (findings 3 and 4 below).
+8. No rate-raising change without a written commission — **DONE** (A3).
+9. Fix advisories 6 and 7; re-run byte-identical; both checkers exit 0 —
+   **PARTIAL.** Advisory 6 (the mislabelled "share resting on us_by_construction"
+   log line) is **fixed** — it is absent from the 22:11 run block. Advisory 7 is
+   **not fixed**: `02_carrier_nation.py:544` still hardcodes the string
+   `"2,407-row category: …"`, and that literal is written verbatim into the `note`
+   cell of the `null_carrier_code` row of `carrier_nation_matchrate.csv` while
+   `15483` and `0.03%` beside it are interpolated. Re-run byte-identical and both
+   checkers exit 0: confirmed.
+
+### F. Gate status
+
+- **G1** — no coef/se/pval columns anywhere; N/A. Separately: zero empty cells in
+  `carrier_nation_precision_audit.csv`, `carrier_nation_audit_sample.csv`,
+  `carrier_nation_unmatched.csv`, `carrier_nation_corridor_coverage.csv`. The
+  only blanks are `nation_iso2` on 45 flips rows (22 refused + 23 no-nation, empty
+  by construction) and the by-design-blank precision/note columns on the
+  matchrate rows they do not apply to. **PASS (vacuous).**
+- **G2** — no |coef|>100 on log/share outcomes; no coefficient columns. **PASS.**
+- **G3** — no p-values anywhere; no p=0.0, no repeated p. **PASS (vacuous).**
+- **G4** — no SEs. **PASS (vacuous).**
+- **G5** — every `*share*`/`*rate*`/`*precision*` column in all ten round CSVs
+  lies in [0,1], 0 violations. `share_dep_*` sums to 1 on all 80 real matchrate
+  rows (max |dev| 3.3e-16); `departures_matched/departures_total ==
+  match_rate_weighted` to 1.1e-16 on every row; `n_codes_matched/n_codes_total ==
+  match_rate_unweighted` exactly; `by_year` departures sum to `overall`
+  (47,352,549), `foreign_by_year` and `foreign_by_service_class` each sum to
+  `foreign` (19,735,573), and `us` + `foreign` = `overall`. Family counts
+  complete (36 years present in both year blocks). **PASS.**
+- **G7 — mapping precision. DEGENERATE-GATE, correctly declared, correctly
+  neither-chosen.** Coverage reading: overall 0.959201 ≥ 0.95, foreign 0.902110 ≥
+  0.90 → PASS. Precision-adjusted (`==0`) reading: overall 0.942933 < 0.95,
+  foreign 0.863077 < 0.90 → FAIL. My own construction (`<0.01`, and netting the
+  false positives I hand-verified) puts the honest foreign figure at
+  **0.844–0.863** under every variant. **Status: DEGENERATE-GATE /
+  BLOCKED-NEEDS-HUMAN — I concur with the declaration.** But see finding 1: the
+  coverage side of the split is knife-edge (0.00211 = 41,643 departures) and that
+  is not on the record.
+- **FIX-02 VERIFY item 1** ("rate ≥0.95/≥0.90 **or task is BLOCKED**) — satisfied
+  via the BLOCKED branch. **Item 2** ("flips empty or every row has a `resolution`
+  note") — 195/195 rows carry a non-empty resolution. **PASS, by content this
+  time, not by vacuity.**
+- G6, G8 — not in scope (FIX-03, FIX-05). G9 — no FINDINGS file yet; but see
+  required action 1, which is a G9 problem in waiting.
+- **T1–T9** — no OpenSky/Trino import or access; `98_check_trino_usage.py` exit 0;
+  `logs/opensky_queries.log` correctly absent. **PASS.**
+- **Rule 12 (method discipline)** — deterministic lookup, no estimator. N/A.
+- **Rule 10 (post-hoc scope narrowing)** — the `us_by_construction` exclusion is
+  substantively justified (section B) and the excluded rows are still written with
+  a stated reason. **PASS with a disclosure requirement** (required action 5).
+
+### G. Findings
+
+**BLOCKING (all are additive diagnostics; none requires a mapping change)**
+
+1. **The coverage reading's PASS is knife-edge and is propped up by the worst
+   tier, and this is nowhere in the round folder.** `carrier_nation_matchrate.csv`,
+   row `foreign`: `match_rate_weighted` 0.902110 exceeds 0.90 by 41,643
+   departures. `carrier_nation_precision_audit.csv`, the 35 rows with
+   `match_method == 'icao'`, carry 47,345 departures at 0.4938 home0. Excluding
+   that tier alone gives foreign coverage **0.8997 → the coverage reading FAILS
+   too**, and the "two defensible readings" become one. The human is being asked
+   to choose between a PASS and a FAIL without being told the PASS survives on
+   47,345 departures of a tier the same folder shows is ~35–50% accurate.
+2. **Per-tier precision exists only in a log file** (`logs/02_carrier_nation.log`,
+   22:11:05 block). `grep -rl '0.493' rounds/round-1-t100-panel/` → nothing. This
+   is literal non-compliance with cycle-1 required action 3 ("Report precision per
+   tier"), and it makes the number uncitable under G9 when the director writes
+   ROUND_01_FINDINGS.md.
+3. **No precision reading exists on the headline sample.** The round file's
+   headline sample is `SERVICE_CLASS == 'F'` and FIX-04/NEW-06 use only class F,
+   yet the precision audit and both G7 readings are computed over all service
+   classes. I recompute on class F: foreign coverage **0.9303** (the CSV has this,
+   `foreign_by_service_class` row `F`), foreign precision-adjusted (`==0`)
+   **0.8911**, (`<0.01`) **0.8710**, and overall precision-adjusted **0.9547 —
+   which PASSES the 0.95 leg**. So on the sample that actually feeds the paper the
+   gate fails on the foreign leg alone and by only 0.0089, a materially different
+   decision problem from the all-classes 0.8631. The all-classes figure is dragged
+   down by freight: `foreign_by_service_class` shows L 0.4607, P 0.6710, G 0.7745.
+   The human cannot answer "which reading governs" without the class-F cut.
+4. **`carrier_nation_corridor_coverage.csv` reports the most flattering of three
+   possible corridor numbers, unlabelled.** Its `match_rate_weighted` pools US
+   carriers (trivially matched) into the denominator. At ICN: all-carrier
+   **0.763413** (what the CSV shows) vs foreign-carrier-only **0.675340** vs
+   foreign + precision-adjusted **0.657241**. For a carrier-*nationality* design
+   the second and third are the relevant ones, and the CSV has no
+   foreign/US split and no precision column. It also hides that `NRT` reads
+   1.0000 coverage but **0.9228** precision-adjusted (ZIPAIR `ZG`→MO), and CDG
+   0.9827. There is no `covid_flag` on the `zoom_2021h2_2022` window even though
+   it overlaps Part 0's COVID window (2020-03 to 2021-12).
+5. **`carrier_nation_unmatched.csv` is not actionable in one sitting.** 244 rows,
+   correctly sorted descending on `total_departures` (verified monotone), named,
+   with `modal_foreign_endpoint_country` and `departures_2019_2024_classF` — but
+   **no `n_openflights_candidates` and no `candidate_names`**, both of which the
+   script already holds in `code_tbl` for these codes. A human looking at `AV`
+   Avianca (254,450 dep) or `OZ` Asiana (204,972) cannot see *why* it is unmatched
+   — corrupt `country` field, two-country ambiguity, or zero candidates — without
+   re-deriving it from `airlines.csv`. That is precisely the decision the human is
+   being handed.
+
+**ADVISORY**
+
+6. **Cycle-1 advisory 7 still open.** `02_carrier_nation.py:544` hardcodes
+   `"2,407-row category: …"`; the literal is written into the `note` cell of
+   `carrier_nation_matchrate.csv`, row `null_carrier_code`. Correct today, silently
+   stale on the next drop. Interpolate `n_null_rows`.
+7. **`code/02_build/` is still untracked** (cycle-1 advisory 9, unheeded). No
+   cycle-1→cycle-2 diff was possible; I verified action 8 by full read plus exact
+   numeric reconciliation instead. Commit before cycle 3 so the history is auditable.
+8. **The name-churn cross-border test should be reported as a null with 2 false
+   positives, not as "2 flags"** (section B), and its 24-of-80 denominator must be
+   stated. Both `AI` and `K8` resolve on inspection; `K8`'s real defect (→ZM) is
+   caught by the precision audit, not by this test.
+9. **The refusal rule's collateral cost is worth one sentence to the human**:
+   85,936 of the 215,007 refused departures were on codes whose pre-refusal
+   mapping was probably right, including `SN`/`SN (1)` where both siblings are
+   Belgian and both would have received the correct BE (A4). A dated lookup
+   recovers them without guessing; corporate-suffix normalisation must **not** be
+   used for this (that is the action-8 prohibition).
+10. **The round file was never amended to commission the three new deliverables**
+    (`carrier_nation_precision_audit.csv`, `carrier_nation_audit_sample.csv`,
+    `carrier_nation_corridor_coverage.csv`). They were commissioned by my cycle-1
+    required actions, which is a legitimate route, but FINDINGS must record that
+    FIX-02's deliverable list grew from 4 to 7 and why.
+11. **The DEGENERATE-GATE is stated neutrally in STATUS.md and in the log, but not
+    in any CSV.** `carrier_nation_matchrate.csv` presents `match_rate_weighted`
+    and `precision_adjusted_match_rate` side by side with an empty `note` cell on
+    both the `overall` and `foreign` rows. The artifact is not self-describing; a
+    reader who opens only the CSV sees two numbers and no statement that the gate
+    is split and unresolved. (Neutrality of the wording itself: I checked and it is
+    even-handed. The log's "G7 is titled 'mapping precision'" leans very slightly
+    toward the precision reading, but it is a true statement about the round file's
+    own text and I do not object to it.)
+
+### H. VERDICT
+
+**VERDICT: FAIL** — cycle 2 of 3.
+
+To be unambiguous about what is *not* wrong, because this must not be
+re-litigated in cycle 3: the DEGENERATE-GATE declaration is **correct and I
+endorse it**; the two readings are honest, exactly reproducible and neither is
+preferred; the refusal fix is the right structural fix and moved both readings
+down; there is no rate-chasing; the outputs are deterministic; the
+`us_by_construction` scoping is substantively justified. A rigorous BLOCKED is a
+successful outcome and this one is nearly there.
+
+It fails because cycle-1 required action 3 is not met (per-tier precision is not
+in any round-folder CSV — finding 2, testable by `grep`), and because the
+evidence package is not yet *sufficient for a human to decide in one sitting*:
+the decisive sensitivity (finding 1), the headline-sample cut the decision
+actually turns on (finding 3), the corridor number's definition (finding 4) and
+the reason-for-non-match (finding 5) are all absent. Each is an additive
+diagnostic over data already in memory in the same script.
+
+### I. Required actions for cycle 3 (all additive; change NO mapping, NO threshold, NO rate)
+
+1. **Write per-tier precision into a CSV.** Add rows to
+   `carrier_nation_precision_audit.csv` (or a `carrier_nation_precision_by_tier.csv`)
+   with one row per `match_method` ∈ {iata, icao, name_exact} giving `n_codes`,
+   `departures`, `share_home0_codes`, `share_home0_dep`, `share_home_lt001_dep`.
+   The numbers must reproduce iata 226/17,054,778/0.043693, icao 35/47,345/0.493759,
+   name_exact 29/701,536/0.002544.
+2. **Add the leave-one-tier-out sensitivity of the coverage reading**, as rows or
+   columns in `carrier_nation_matchrate.csv`: foreign coverage excluding `icao`
+   = 0.8997, excluding `name_exact` = 0.8666, and the margin above the threshold
+   in departures (41,643). One line of arithmetic; it is the single most
+   decision-relevant fact in the task.
+3. **Compute both G7 readings on the headline sample.** Add
+   `precision_adjusted_match_rate`, `share_matched_dep_home0` and
+   `share_matched_dep_home_lt_001` to the `foreign_by_service_class` rows (at
+   minimum the `F` row) and to a new `overall_class_f` / `foreign_class_f` row
+   pair. Expected: foreign F coverage 0.9303, precision-adjusted 0.8911
+   (`<0.01`: 0.8710); overall F coverage 0.9710, precision-adjusted 0.9547.
+   Also report the `<0.01` variant of `precision_adjusted_match_rate` as its own
+   column for the all-classes rows (foreign 0.8440, overall 0.9350) so the
+   threshold choice is visible rather than implicit.
+4. **Fix the corridor CSV's definition.** Add `carrier_group` (`all` / `foreign`)
+   as a row dimension and a `precision_adjusted_match_rate` column, plus a
+   `covid_overlap` boolean on the window. Expected ICN full_2019_2024: all
+   0.763413, foreign 0.675340, foreign precision-adjusted 0.657241; NRT foreign
+   1.000000 / 0.922750.
+5. **Add `n_openflights_candidates` and `candidate_names` to
+   `carrier_nation_unmatched.csv`**, and a `reason` column distinguishing
+   zero-candidate / ambiguous-country / unresolvable-country-string /
+   refused-suffix-collision. The script already carries all of it in `code_tbl`.
+6. **Disclosure, in STATUS.md and then in ROUND_01_FINDINGS.md** (words, not new
+   numbers): that the cross-border drift test was applied to 24 lookup-matched
+   churn codes and deliberately not to the 45 `us_by_construction` ones, with the
+   reason; that its 2 flags both resolve as false positives; and that the refusal
+   rule removed ~86k departures of probably-correct mapping.
+7. Fix advisory 6 (interpolate `n_null_rows` at line 544), and **commit
+   `code/02_build/`** so cycle 3 is diffable.
+8. Re-run; confirm the six existing CSVs change only by the intended additions;
+   `99_validate_outputs.py` and `98_check_trino_usage.py` exit 0; script still
+   exits 1 under DEGENERATE-GATE. **Do not touch the matching rules.** Any edit
+   that moves 0.902110 or 0.863077 is out of scope and will fail cycle 3.
+
+### J. (a) The precise question the human must answer
+
+**Does G7 govern *coverage* (did the carrier code resolve to some nation) or
+*precision* (is the resolved nation the right one)?** Concretely, one of:
+- **(a1)** G7 = coverage → foreign 0.9021 clears 0.90 and FIX-04+ proceed on all
+  matched carriers. The human must then accept, in writing, that ≈15% of matched
+  foreign departures are on a code mapped to a nation the carrier never flies to,
+  that mapped **RU** is ~0.18 precise and mapped **IR** ~0.000, and that the PASS
+  survives by 41,643 departures carried by a tier that is ~35–50% accurate.
+- **(a2)** G7 = precision → 0.8631 (or 0.8911 on class F) fails and FIX-02 stays
+  BLOCKED until the lookup source is replaced or dated.
+- **(a3)** Split the difference: keep the coverage gate but exclude specified
+  low-precision strata (the `icao` tier; codes with `home_country_dep_share == 0`;
+  or nations whose within-nation precision is below some bar) and log the
+  exclusion. This is the option the evidence actually supports and it is cheap:
+  the `icao` tier is 952 departures inside NEW-06's window.
+
+A second, independent decision is queued behind it: **may a better
+carrier-nationality source be placed in `data/raw/lookups/`** (ICAO Doc 8585, OAG,
+or a BTS carrier decode with country and dates)? `data/raw/lookups/airlines.csv`
+is a 2014-vintage OpenFlights extract with 62 corrupted `country` values
+(`AVIANCA`, `Russia]]`, ` S.A.`, `WATCHDOG`), no dates, and it is the direct cause
+of every defect in this task. No agent may add one without this decision.
+
+### K. (b) What would unblock FIX-02
+
+Any **one** of:
+- a human ruling on (a1)/(a2)/(a3) recorded in DECISIONS.md and reflected in a
+  ROUND_01.md amendment restating G7 unambiguously; **or**
+- a human-placed dated carrier-nationality lookup in `data/raw/lookups/`, after
+  which FIX-02 re-runs and G7 is evaluated once, on one reading; **or**
+- a director-written commission in ROUND_01.md for a specific matching change,
+  with the before/after rate reported both ways (cycle-1 action 8).
+Nothing an agent can do alone unblocks it. Completing my cycle-3 actions above
+does **not** unblock FIX-02 — it makes the BLOCKED package decision-grade.
+
+### L. (c) Ruling: what FIX-03, FIX-04, FIX-05 and NEW-06 may use now
+
+Part 0's G7 clause — "Below threshold → FIX-02 BLOCKED-NEEDS-HUMAN, and FIX-04+
+proceed only on matched carriers with the exclusion logged" — is the operative
+authority, and it is written to survive exactly this situation. My ruling:
+
+- **FIX-03 (coverage audit): MAY PROCEED**, on `match_method ∈ {iata, icao,
+  name_exact, us_by_construction}` from `data/interim/carrier_nation.parquet`, with
+  the exclusion logged as a row in `coverage_excluded_cells.csv`'s filter log:
+  244 codes / 1,931,914 departures excluded (222 unmatched + 22 refused). FIX-03
+  measures *airborne-time reporting coverage*, and its conclusions are about data
+  completeness, not about nationality, so mis-mapping degrades it far less than it
+  degrades FIX-04. **Condition:** FIX-03 must additionally report every nation ×
+  year coverage cell's `share_dep_home0` so that a nation whose cells are built
+  mostly out of mis-mapped carriers is visible before FIX-04 consumes it.
+  Mandatory captions: mapped nation **RU** and **IR** must be labelled
+  MATCH-SENSITIVE wherever they appear.
+- **FIX-04 (panel): MAY PROCEED under a hard restriction.** Build on matched
+  carriers only, with the exclusion logged in `panel_filter_log.csv` as its own
+  named filter step with before/after departures. In addition, and this is not
+  optional: carry a per-cell `nation_precision_flag` derived from
+  `carrier_nation_precision_audit.csv` (`home_country_dep_share == 0`, and a
+  second at `< 0.01`), and write a `cell_ok_precision` column. The panel may be
+  **built**; no nation-level number from it may be **reported** until FIX-02 is
+  unblocked. The `icao` tier (952 departures in the 2019–2024 class-F window)
+  should simply be dropped in FIX-04 with the drop logged — it costs nothing and
+  removes the worst stratum.
+- **FIX-05 (baselines/excess): MAY PROCEED** on FIX-04's output. It is arithmetic
+  on the panel and inherits FIX-04's flags; nothing in it depends on nationality
+  being right. Same reporting embargo.
+- **NEW-06 (the raw-data wedge figure): MAY PROCEED to build, MUST NOT be
+  presented as a headline.** It is the one task where mis-mapping is fatal: its
+  treated nations are exactly where precision is worst, and 8.85% of matched
+  foreign class-F departures in its own 2019–2024 window sit on codes with
+  `home_country_dep_share < 0.01`. Every NEW-06 artifact must carry the
+  MATCH-SENSITIVE flag and a version computed with home0 codes excluded, shown
+  side by side. NEW-06 also still carries the FIX-00 forward flag: its treatment
+  list comes from the agent-drafted, human-unreviewed
+  `data/raw/events/ban_nations_2022.csv`.
+- **Corridor 1 / ICN: MAY BE COMPUTED, MUST NOT BE REPORTED as a corridor
+  result in this round.** Foreign-carrier coverage at ICN in the 2019–2024
+  window is **0.675340** (0.657241 precision-adjusted) against ≥0.956 at every
+  other anchor; Asiana `OZ` (22,793 class-F departures 2019–2024) and Jin Air
+  `LJ` are simply absent, so a "Korea" series is Korean Air + Jeju + Air Busan
+  with the second flag carrier silently missing. Any ICN chart must state that
+  in the caption or be dropped. `TPE` at 0.956194 (STARLUX `JX` missing) should
+  carry a footnote. The other 20 anchors are clean at ≥0.9995 and may be used
+  normally.
+- **Nothing may be written into `paper/` or `slides/` from FIX-02 outputs.**
+
+### M. For the director to carry into ROUND_01_FINDINGS.md
+
+1. G7 is split and must always be reported split, both numbers traced:
+   coverage `(carrier_nation_matchrate.csv, row foreign, match_rate_weighted)`
+   and precision-adjusted `(same row, precision_adjusted_match_rate)`, with
+   `share_matched_dep_home0` and `share_matched_dep_home_lt_001` from the same
+   row. **Never report 0.9021 alone.**
+2. The knife-edge: the coverage PASS clears by 41,643 departures and dies if the
+   `icao` tier is removed (finding 1). Cite once required action 2 exists.
+3. Per-tier precision, with `icao` reported as **unusable** and its trivial weight
+   stated (952 departures in NEW-06's window). Cite once required action 1 exists.
+4. Mapped **RU** precision ≈0.18 and mapped **IR** ≈0.000 — named carriers `KV`
+   Sky Regional (Canada) and `RV` Air Canada rouge. The most damaging pair of
+   numbers in the round; a referee will find them if we do not.
+5. `TA` Taca International (El Salvador) mapped to **CR**, 347,572 departures —
+   a vendor error in `airlines.csv` that both G7 readings currently let through
+   (`home_country_dep_share` 0.0038 > 0).
+6. ICN foreign coverage 0.675 vs ≥0.956 elsewhere; Asiana absent from corridor 1.
+7. The name-churn null: 80 codes / 173 rows / 13.83% of departures churn their
+   name; of the 24 testable, 0 genuine cross-border reissues (2 flags, both false
+   positives). Report as a reassuring null under rule 6, with the scoping stated.
+8. The suffix-collision refusal: 22 codes / 11 families / 215,007 departures now
+   refused rather than guessed; it lowered both G7 readings; ~86k of those
+   departures were probably correct and a dated lookup would recover them.
+9. FIX-02's deliverable list grew from 4 to 7 files, commissioned by overseer
+   cycle-1 required actions rather than by the round file (advisory 10).
+10. DECISION-PENDING for the human: replace `data/raw/lookups/airlines.csv`
+    (2014 OpenFlights, 62 corrupted `country` values, no dates) with a dated
+    carrier-nationality source before FIX-04 is reported. Carried forward from
+    cycle 1 and now the direct cause of the block.
+11. Carried from FIX-01 and still owed in FINDINGS: SERVICE_CLASS `Q`
+    (`ingest_value_drift.csv`, the 9 rows with `documented_in_round_file` False);
+    the exact-duplicate / cell-key non-uniqueness warning for FIX-04; and the
+    note that the eight NA-count literals are drop-specific while the NA-string
+    guard is the durable check.

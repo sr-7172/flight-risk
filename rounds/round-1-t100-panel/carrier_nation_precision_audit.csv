@@ -1,0 +1,291 @@
+unique_carrier,carrier_name,nation_iso2,match_method,departures,home_country_dep_share,top_endpoint_country,n_openflights_candidates,candidate_names,flag_home_share_zero
+AC,Air Canada,CA,iata,1972479.0,0.9960658643260587,CA,1,Air Canada (Canada),False
+QK,Jazz Aviation LP,CA,iata,1134565.0,1.0,CA,1,Air Canada Jazz (Canada),False
+BA,British Airways Plc,GB,iata,934509.0,0.980925812378479,GB,1,British Airways (United Kingdom),False
+AM,Aeromexico,MX,iata,708971.0,0.9987376070389339,MX,1,AeroMéxico (Mexico),False
+LH,Lufthansa German Airlines,DE,iata,678287.0,0.9533796165929761,DE,2,Lufthansa (Germany); Lufthansa Cargo (Germany),False
+MX (1),Compania Mexicana De Aviaci,MX,iata,577673.0,0.9940052590306281,MX,1,Mexicana de Aviaci (Mexico),False
+WS,Westjet,CA,iata,560487.0,0.9998233678925649,CA,1,WestJet (Canada),False
+AF,Compagnie Natl Air France,FR,iata,489568.0,0.9012496731812537,FR,1,Air France (France),False
+KE,Korean Air Lines Co. Ltd.,KR,iata,462993.0,0.8709634918886463,KR,1,Korean Air (Republic of Korea),False
+JL,Japan Air Lines Co. Ltd.,JP,iata,433651.0,0.9511219851908562,JP,2,Japan Airlines (Japan); Japan Airlines Domestic (Japan),False
+VS,Virgin Atlantic Airways,GB,iata,373457.0,0.9987709428394701,GB,1,Virgin Atlantic Airways (United Kingdom),False
+Y4,Concesionaria Vuela Compania De Aviacion SA de CV (Volaris),MX,iata,354940.0,1.0,MX,1,Volaris (Mexico),False
+TA,Taca International Airlines,CR,iata,347572.0,0.0037833887654931926,SV,1,Grupo TACA (Costa Rica),False
+CM,Compania Panamena (Copa),PA,iata,344979.0,0.9700677432539372,PA,1,Copa Airlines (Panama),False
+ZX,Air Georgian,CA,name_exact,304761.0,0.9999507811038814,CA,1,Air Georgian (Canada),False
+KL,Klm Royal Dutch Airlines,NL,iata,259033.0,0.9597850466928924,NL,1,KLM Royal Dutch Airlines (Netherlands),False
+CX,Cathay Pacific Airways Ltd.,HK,iata,253033.0,0.841890188236317,HK,1,Cathay Pacific (Hong Kong SAR of China),False
+PD,Porter Airlines Limited (PACL),CA,iata,228419.0,1.0,CA,1,Porter Airlines (Canada),False
+CI,China Airlines Ltd.,TW,iata,224625.0,0.8869493600445186,TW,1,China Airlines (Taiwan),False
+KV,Sky Regional Airlines Inc.,RU,iata,222939.0,0.0,CA,1,Kavminvodyavia (Russia),True
+BR,Eva Airways Corporation,TW,iata,220103.0,0.984225567120848,TW,1,EVA Air (Taiwan),False
+NH,All Nippon Airways Co.,JP,iata,217636.0,0.9998483706739694,JP,1,All Nippon Airways (Japan),False
+JM,Air Jamaica Limited,JM,iata,208767.0,0.954461193579445,JM,1,Air Jamaica (Jamaica),False
+EI,Aer Lingus Plc,IE,iata,193529.0,0.9668731817970433,IE,1,Aer Lingus (Ireland),False
+RV,Air Canada rouge LP,IR,iata,191266.0,0.0,CA,1,Caspian Airlines (Iran),True
+IB,Iberia Air Lines Of Spain,ES,iata,187249.0,0.748308402181053,ES,1,Iberia Airlines (Spain),False
+SQ,Singapore Airlines Ltd.,SG,iata,185770.0,0.22720030144802714,SG,2,Singapore Airlines (Singapore); Singapore Airlines Cargo (Singapore),False
+LA,LATAM Airlines Group SA dba Lan Airlines,CL,iata,178515.0,0.4077920622916842,CL,1,LAN Airlines (Chile),False
+BW,Caribbean Airlines Limited,TT,iata,176498.0,0.4772405353035162,TT,1,Caribbean Airlines (Trinidad and Tobago),False
+UP,Bahamasair Holding Limited,BS,iata,175789.0,0.999237722496857,BS,1,Bahamasair (Bahamas),False
+SK,Scandinavian Airlines Sys.,SE,iata,168365.0,0.25011730466545895,DK,1,Scandinavian Airlines System (Sweden),False
+AZ,Italia Transporto Aereo S.P.A DBA ITA S.P.A,IT,iata,168300.0,0.99825311942959,IT,1,Alitalia (Italy),False
+EK,Emirates,AE,iata,153212.0,0.8906351982873404,AE,1,Emirates (United Arab Emirates),False
+TK,Turk Hava Yollari A.O.,TR,iata,150198.0,0.9600860197872142,TR,1,Turkish Airlines (Turkey),False
+QF,Qantas Airways Ltd.,AU,iata,149004.0,0.7817642479396526,AU,1,Qantas (Australia),False
+FI,Icelandair,IS,iata,146955.0,0.9922357184172026,IS,1,Icelandair (Iceland),False
+5D,Aerolitoral,MX,name_exact,145841.0,1.0,MX,1,Aerolitoral (Mexico),False
+LX,Swiss International Airlines,CH,iata,139005.0,0.9996906586094025,CH,1,Swiss International Air Lines (Switzerland),False
+QT,Transportes Aereos Mercantiles Panamericanos S.A,CO,iata,122762.0,0.9024535279646796,CO,1,TAMPA (Colombia),False
+LR,Lacsa,CR,iata,119061.0,0.4382039458764835,CR,1,LACSA (Costa Rica),False
+NZ,Air New Zealand,NZ,iata,117999.0,0.6166069203976305,NZ,1,Air New Zealand (New Zealand),False
+QR,Qatar Airways (Q.C.S.C),QA,iata,112596.0,0.99381860812107,QA,1,Qatar Airways (Qatar),False
+JJ,TAM Linhas Aereas SA dba Latam Airlines Brasil,BR,iata,102232.0,0.9926735268800375,BR,1,TAM Brazilian Airlines (Brazil),False
+CA,Air China,CN,iata,101961.0,0.9913986720412706,CN,1,Air China (China),False
+LY,El Al Israel Airlines Ltd.,IL,iata,96964.0,0.8031124953591023,IL,1,El Al Israel Airlines (Israel),False
+KX,Cayman Airways Limited,KY,iata,95886.0,0.987766722983543,KY,1,Cayman Airways (Cayman Islands),False
+PR,Philippine Airlines Inc.,PH,iata,92299.0,0.9268897821211497,PH,1,Philippine Airlines (Philippines),False
+4O,ABC Aerolineas SA de CV dba Interjet,MX,iata,91999.0,0.9999565212665356,MX,1,Interjet (ABC Aerolineas) (Mexico),False
+MP,Martinair Holland N.V.,NL,iata,87939.0,0.6092973538475535,NL,1,Martinair (Netherlands),False
+PH,Polynesian Airlines Ltd.,WS,iata,87299.0,0.9941465537978671,WS,1,Polynesian Airlines (Samoa),False
+AI,National Aviation Company of India Limited d/b/a Air India,IN,iata,78845.0,0.6394064303380049,IN,1,Air India Limited (India),False
+RG,Varig S. A.,BR,iata,74846.0,0.7915453063623975,BR,1,VRG Linhas Aereas (Brazil),False
+JR,Aero California,MX,name_exact,73434.0,0.9997004112536427,MX,1,Aero California (Mexico),False
+LO,Polskie Linie Lotnicze,PL,iata,72372.0,0.9850356491460786,PL,1,LOT Polish Airlines (Poland),False
+TP,TAP-TAP Air Portugal,PT,iata,69531.0,0.9991083114006702,PT,1,TAP Portugal (Portugal),False
+SR,Swissair Transport Co. Ltd.,CH,iata,68675.0,0.9651983982526392,CH,1,Swissair (Switzerland),False
+JO,Jalways Co. Ltd.,JP,iata,66799.0,0.9985628527373164,JP,1,JALways (Japan),False
+MU,China Eastern Airlines,CN,iata,63403.0,1.0,CN,1,China Eastern Airlines (China),False
+OS,Austrian Airlines,AT,iata,63261.0,0.9370386177897915,AT,1,Austrian Airlines (Austria),False
+W8,Cargojet Airways Ltd.,CA,iata,62943.0,0.5502597588294171,CA,1,Cargojet Airways (Canada),False
+KZ,Nippon Cargo Airlines,JP,name_exact,61172.0,0.9799581507879422,JP,1,Nippon Cargo Airlines (Japan),False
+CZ,China Southern Airlines,CN,iata,58220.0,0.979835108210237,CN,1,China Southern Airlines (China),False
+LP,Lan Peru Airlines,PE,iata,57850.0,0.9890751944684529,PE,1,LAN Peru (Peru),False
+SU,Aeroflot Russian Airlines,RU,iata,57710.0,0.9239126667821868,RU,1,Aeroflot Russian Airlines (Russia),False
+EY,Etihad Airways,AE,iata,48896.0,0.9688318062827225,AE,1,Etihad Airways (United Arab Emirates),False
+AR,Aerolineas Argentinas,AR,iata,48007.0,0.8568333784656404,AR,1,Aerolineas Argentinas (Argentina),False
+DY,Norwegian Air Shuttle ASA,NO,iata,46639.0,0.15493471129312378,GB,1,Norwegian Air Shuttle (Norway),False
+TS,Air Transat,CA,iata,45103.0,0.995676562534643,CA,1,Air Transat (Canada),False
+RJ,Alia-(The) Royal Jordanian,JO,iata,38847.0,0.7045074265709064,JO,1,Royal Jordanian (Jordan),False
+AY,Finnair Oy,FI,iata,37585.0,0.9599042171078888,FI,1,Finnair (Finland),False
+TN,Air Tahiti Nui,FR,iata,36969.0,0.2993318726500582,PF,1,Air Tahiti Nui (France),False
+SA,South African Airways,ZA,iata,36907.0,0.420868669900019,ZA,1,South African Airways (South Africa),False
+SV,Saudi Arabian Airlines Corp,SA,iata,36589.0,0.811774030446309,SA,1,Saudi Arabian Airlines (Saudi Arabia),False
+7Z,Lb Limited,CV,iata,35840.0,0.0,BS,1,Halcyonair (Cape Verde),True
+DE,Condor Flugdienst,DE,iata,35361.0,0.9073555612115042,DE,1,Condor Flugdienst (Germany),False
+XL,Lan Ecuador,EC,iata,34388.0,0.9480051180644411,EC,1,Aerolane (Ecuador),False
+CK,China Cargo Airline,CN,iata,34291.0,1.0,CN,1,China Cargo Airlines (China),False
+6R,Aerounion Aerotransporte de Carga Union SA de CV,RU,iata,30764.0,0.0,MX,1,Alrosa Mirny Air Enterprise (Russia),True
+AT,Royal Air Maroc,MA,iata,30624.0,0.8770898641588297,MA,1,Royal Air Maroc (Morocco),False
+ET,Ethiopian Airlines,ET,iata,28650.0,0.8660732984293193,ET,1,Ethiopian Airlines (Ethiopia),False
+6A,Aviacsa Airlines,MX,iata,28517.0,1.0,MX,1,Consorcio Aviaxsa (Mexico),False
+BY,Britannia Airways Ltd.,GB,iata,28205.0,0.968268037581989,GB,1,Thomsonfly (United Kingdom),False
+FJ,Air Pacific Ltd.,FJ,iata,26916.0,0.8145712587308664,FJ,1,Air Pacific (Fiji),False
+AB,Air Berlin PLC and CO,DE,iata,26891.0,0.999888438511026,DE,1,Air Berlin (Germany),False
+7C,Jeju Air Co Ltd.,KR,iata,26550.0,0.9497551789077213,KR,1,Jeju Air (Republic of Korea),False
+K8,Dutch Caribbean Airlines,ZM,iata,25319.0,0.0,AN,2,Airlink Zambia (Zambia); Zambia Skyways (Zambia),True
+MS,Egyptair,EG,iata,23337.0,0.9680335947208296,EG,1,Egyptair (Egypt),False
+HU,Hainan Airlines Company Limited,CN,iata,21427.0,1.0,CN,1,Hainan Airlines (China),False
+FQ,Air Aruba,BE,iata,21332.0,0.0,AW,1,Thomas Cook Airlines (Belgium),True
+KU,Kuwait Airways Corp.,KW,iata,19903.0,0.4623423604481736,KW,1,Kuwait Airways (Kuwait),False
+VX (1),Aces Airlines,US,iata,19410.0,0.0,CO,1,Virgin America (United States),True
+UX,Air Europa,ES,iata,19383.0,0.9920033018624568,ES,1,Air Europa (Spain),False
+PBQ,Privatair,CH,name_exact,18864.0,0.22937871077184055,DE,1,Privatair (Switzerland),False
+MH,Malaysian Airline System,MY,iata,18695.0,0.018079700454667023,TW,1,Malaysia Airlines (Malaysia),False
+TG,Thai Airways International Ltd.,TH,iata,18650.0,0.31120643431635386,JP,1,Thai Airways International (Thailand),False
+VJT,VistaJet Limited,CA,icao,17409.0,0.03463725659141823,GB,1,Vistajet (Canada),False
+S3,"Santa Barbara Airlines, C.A",VE,iata,17043.0,1.0,VE,1,Santa Barbara Airlines (Venezuela),False
+PK,Pakistan International Airlines,PK,iata,16414.0,0.12666016814914097,GB,1,Pakistan International Airlines (Pakistan),False
+CC,Air Atlanta Icelandic,IS,name_exact,15167.0,0.0011208544867145776,DE,1,Air Atlanta Icelandic (Iceland),False
+S4,Sata Internacional,PT,iata,14492.0,1.0,PT,1,SATA International (Portugal),False
+VP,Viacao Aerea Sao Paulo,BR,iata,13621.0,0.7398135232361794,BR,1,VASP (Brazil),False
+OA,Olympic Airways,GR,iata,13542.0,0.9949785851425196,GR,1,Olympic Airlines (Greece),False
+DO,Compania Dominicana De Avia,DO,iata,13051.0,1.0,DO,1,Dominicana de Aviaci (Dominican Republic),False
+WW,WOW Air ehf,GB,iata,13036.0,0.0,IS,1,bmibaby (United Kingdom),True
+WG,Sunwing Airlines Inc.,CA,iata,12882.0,0.9115820524763235,CA,3,Sunwing Airlines (Canada); Worldways (Canada); Sunwing (Canada),False
+DI,Norwegian Air UK Limited,DE,iata,12426.0,0.0,GB,1,dba (Germany),True
+N3,Vuela EL Salvador S.A. de C.V.,RU,iata,12092.0,0.0,SV,1,Omskavia Airline (Russia),True
+NQ,Air Japan Co,JP,iata,11657.0,1.0,JP,1,Air Japan (Japan),False
+OK,Czech Airlines,CZ,iata,11345.0,0.9245482591449978,CZ,1,Czech Airlines (Czech Republic),False
+JQ,Jetstar Airways Pty Limited,AU,iata,11332.0,1.0,AU,1,Jetstar Airways (Australia),False
+B0,Dreamjet SAS Dba La Compagnie,US,iata,10871.0,0.0,FR,1,Aws express (United States),True
+7I,Insel Air International B V,AN,iata,10639.0,0.11467243161951311,CW,1,Insel Air (7I/INC) (Priv) (Netherlands Antilles),False
+TZQ,First Choice Airways,GB,name_exact,10525.0,0.8407600950118764,GB,1,First Choice Airways (United Kingdom),False
+9W,Jet Airways (India) Limited,IN,iata,10168.0,0.0,BE,1,Jet Airways (India),True
+C6,Canjet Airlines,CA,iata,10132.0,1.0,CA,1,CanJet (Canada),False
+PY,Surinam Airways Limited,SR,iata,9491.0,0.2934358866294384,AW,1,Surinam Airways (Suriname),False
+4Y,Eurowings Discover GmbH,FR,iata,9123.0,0.00010961306587745259,DE,1,Airbus France (France),False
+NLQ,Nolinor Aviation,CA,name_exact,8851.0,0.9966105524799458,CA,1,Nolinor Aviation (Canada),False
+SEQ,Sky Service F.B.O.,TH,icao,8658.0,0.0,CA,1,Sky Eyes (Thailand),True
+BD,British Midland Airways Ltd.,GB,iata,8634.0,0.9964095436645819,GB,1,bmi (United Kingdom),False
+MA,Malev Hungarian Airlines,HU,iata,8601.0,0.949424485524939,HU,1,Malév (Hungary),False
+V4,Vensecar International,KG,iata,8321.0,0.0,VE,1,Reem Air (Kyrgyzstan),True
+D8,Norwegian Air International Ltd.,DJ,iata,8248.0,0.0,IE,1,Djibouti Airlines (Djibouti),True
+QO,Aeromexpress,MX,name_exact,8040.0,0.9985074626865672,MX,1,Aeromexpress (Mexico),False
+Q6,"Vuela Aviacion, S.A.",PE,iata,8031.0,0.0,SV,1,Aero Condor Peru (Peru),True
+EU,Ecuatoriana De Aviacion,EC,iata,8012.0,0.9309785322016975,EC,1,Empresa Ecuatoriana De Aviacion (Ecuador),False
+ZG,ZIPAIR Tokyo Inc.,MO,iata,7858.0,0.0,JP,1,Viva Macau (Macao),True
+TQQ,Taca Peru,PE,name_exact,7844.0,0.9785823559408465,PE,1,TACA Peru (Peru),False
+3U,Sichuan Airlines Co Ltd.,CN,iata,7626.0,1.0,CN,1,Sichuan Airlines (China),False
+N0,"Norse Atlantic Airways,AS",AR,iata,7272.0,0.0,FR,1,Norte Lineas Aereas (Argentina),True
+5C,Challenge Airlines (IL) Ltd.,IL,iata,6956.0,0.30764807360552043,BE,1,CAL Cargo Air Lines (Israel),False
+ACQ,Aeronautica De Cancun,PE,icao,6783.0,0.0,MX,1,Nuevo Continente (Peru),True
+2K,Aerogal,EC,iata,6200.0,1.0,EC,1,Aerolineas Galapagos (Aerogal) (Ecuador),False
+MF,"Xiamen Airlines Co., Ltd.",CN,iata,6136.0,1.0,CN,1,Xiamen Airlines (China),False
+6Y,Nicaraguense De Aviacion Sa,LV,iata,5976.0,0.0,NI,1,SmartLynx Airlines (Latvia),True
+HY,Uzbekistan Airways,UZ,iata,5820.0,0.3518900343642612,LV,1,Uzbekistan Airways (Uzbekistan),False
+SG,Jetsgo,CA,name_exact,5691.0,1.0,CA,1,JetsGo (Canada),False
+Z0,Norse Atlantic UK Ltd,AR,iata,5630.0,0.0,GB,1,All Argentina Express (Argentina),True
+9V,"Avior Airlines, C.A.",CR,iata,5627.0,0.0,VE,1,Volotea Costa Rica (Costa Rica),True
+RO,Tarom Romanian Air Transpor,RO,iata,5598.0,0.6170060735977134,RO,1,Tarom (Romania),False
+TV,Haiti Trans Air,BE,iata,5461.0,0.0,HT,1,Virgin Express (Belgium),True
+ZUQ,Zuliana De Aviacion,VE,name_exact,5433.0,1.0,VE,1,Zuliana de Aviacion (Venezuela),False
+HQ,Harmony Airways,CA,name_exact,5429.0,1.0,CA,1,Harmony Airways (Canada),False
+EQ,Tame Linea Aerea del Ecuador Tme EP,EC,iata,5394.0,1.0,EC,1,TAME (Ecuador),False
+8R,Edelweiss Air Ag,BR,iata,5039.0,0.0,CH,1,TRIP Linhas A (Brazil),True
+7P,Apa International Air S.A.,ID,iata,4966.0,0.0,DO,1,Metro Batavia (Indonesia),True
+WO,SWOOP Inc.,US,iata,4887.0,0.0,CA,1,World Airways (United States),True
+SE,XL Airways France,FR,iata,4727.0,0.9991537973344616,FR,1,XL Airways France (France),False
+WU,Western Air Ltd,UA,iata,4366.0,0.0,BS,1,Wizz Air Ukraine (Ukraine),True
+CF,Compan. De Aviacion Faucett,SE,iata,4315.0,0.0,PE,1,City Airline (Sweden),True
+IG,Airitaly S.P.A.,IT,iata,4305.0,1.0,IT,1,Meridiana (Italy),False
+HX,Hong Kong Airlines Limited,HK,iata,4268.0,1.0,HK,1,Hong Kong Airlines (Hong Kong SAR of China),False
+OR,TUI Airlines Nederland B.V.,NL,iata,4251.0,0.9381322041872501,NL,1,Arkefly (Netherlands),False
+NG,Lauda Air Luftfahrt Ag,AT,iata,4166.0,0.06072971675468075,DE,1,Lauda Air (Austria),False
+VW,Transportes Aeromar S.A de C.V,MX,iata,4149.0,1.0,MX,1,Aeromar (Mexico),False
+VV,Aerosvit Ukranian Airlines,UA,iata,4116.0,1.0,UA,1,Aerosvit Airlines (Ukraine),False
+EW,Eurowings GmbH,DE,iata,4100.0,1.0,DE,1,Eurowings (Germany),False
+UD,Fast Air Carrier Ltd.,FR,iata,4071.0,0.0,CL,1,Hex'Air (France),True
+ZE (1),Lineas Aereas Azteca,MX,name_exact,4022.0,1.0,MX,1,Lineas Aereas Azteca (Mexico),False
+RK,Air Afrique,CI,name_exact,4013.0,0.00473461250934463,SN,1,Air Afrique (Ivory Coast),False
+C8,Cargolux Italia SpA,US,iata,4011.0,0.0,LU,2,Chicago Express (United States); Chicago Express (C8) (United States),True
+EOQ,Aeroservicios Ecuatorianos,EC,name_exact,3900.0,1.0,EC,1,Aeroservicios Ecuatorianos (Ecuador),False
+GA,P.T. Garuda Indonesian Arwy,ID,iata,3751.0,1.0,ID,1,Garuda Indonesia (Indonesia),False
+ON,Air Nauru,NR,iata,3744.0,0.09054487179487179,PH,2,Nauru Air Corporation (Nauru); Our Airline (Nauru),False
+JU,Air Serbia,RS,iata,3645.0,0.9994513031550069,RS,2,Jat Airways (Serbia); Air Serbia (Serbia),False
+VIQ,Volga-Dnepr Airlines,RU,name_exact,3441.0,0.05841325196163906,CA,1,Volga-Dnepr Airlines (Russia),False
+JB,Helijet International Inc.,CA,iata,3408.0,1.0,CA,1,Helijet (Canada),False
+YP,Air Premia,DE,iata,3402.0,0.0,KR,1,Aero Lloyd (YP) (Germany),True
+KQ,Kenya Airways PLC,KE,iata,3332.0,1.0,KE,1,Kenya Airways (Kenya),False
+PS,Ukraine International Airlines,UA,name_exact,3167.0,1.0,UA,1,Ukraine International Airlines (Ukraine),False
+VR,Transportes Aereos De Cabo,PT,iata,2984.0,0.0,CV,1,TACV (Portugal),True
+UT,Union De Transports Aeriens,RU,iata,2969.0,0.0,FR,1,UTair Aviation (Russia),True
+O6,Oceanair Linhas Aereas S A,BR,iata,2939.0,0.8121810139503233,BR,1,Oceanair (Brazil),False
+5L,Aerosur,BO,iata,2900.0,0.5417241379310345,BO,1,Aerosur (Bolivia),False
+TRA,Aeromexico Travel,NL,icao,2846.0,0.0,MX,1,Transavia Holland (Netherlands),True
+7L,Silk Way West Airlines,IL,iata,2738.0,0.0,AZ,1,Sun D'Or (Israel),True
+OJ,Fly Jamaica Airways Limited,NG,iata,2717.0,0.0,JM,1,Overland Airways (Nigeria),True
+BX,Air Busan,KR,name_exact,2693.0,0.9402153731897512,KR,1,Air Busan (Republic of Korea),False
+7Q,Pan American World Airways Dominicana,DO,iata,2671.0,0.9910146012729315,DO,1,Pan Am World Airways Dominicana (Dominican Republic),False
+GH,Ghana Airways Corporation,RU,iata,2623.0,0.0,GH,1,Globus (Russia),True
+H8,Sky Airline Peru,RU,iata,2616.0,0.0,PE,1,Dalavia (Russia),True
+JK,Spanair S.A.,ES,iata,2595.0,1.0,ES,1,Spanair (Spain),False
+BG,Biman Bangladesh Airlines,BD,iata,2531.0,0.02765705254839984,BE,1,Biman Bangladesh Airlines (Bangladesh),False
+ED,Andes,PK,iata,2474.0,0.0,EC,1,Airblue (Pakistan),True
+Y9,1263343 Alberta Inc. d/b/a Lynx Air,IR,iata,2430.0,0.0,CA,1,Kish Air (Iran),True
+ND,Intair,CA,name_exact,2377.0,0.9995793016407236,CA,1,Intair (Canada),False
+UN,Transaero Airlines,RU,iata,2376.0,1.0,RU,1,Transaero Airlines (Russia),False
+4N,Air North,CA,iata,2342.0,1.0,CA,1,Air North Charter - Canada (Canada),False
+R0,Tantalus Air Ltd. d/b/a Harbour Air d/b/a Harbour Air Seaplanes,PK,iata,1794.0,0.0,CA,1,Royal Airlines (Pakistan),True
+FS,Serv De Trans Aereos Fuegui,AR,iata,1789.0,0.41531581889323643,CL,1,Servicios de Transportes A (Argentina),False
+ADB,Antonov Company,UA,icao,1766.0,0.013023782559456399,CA,1,Antonov Airlines (Ukraine),False
+DM,Arajet S.A.,DK,iata,1729.0,0.0,DO,1,Maersk (Denmark),True
+JN (1),Excel Airways,GB,iata,1698.0,1.0,GB,1,Excel Airways (United Kingdom),False
+H2,City Bird,CL,iata,1636.0,0.0,BE,1,Sky Airline (Chile),True
+6U,Air Ukraine,UA,name_exact,1573.0,0.6783216783216783,UA,1,Air Ukraine (Ukraine),False
+8I,Inselair Aruba NV,IT,iata,1549.0,0.0,AW,1,Myway Airlines (Italy),True
+EUQ,Air Atlanta Europe,GB,name_exact,1505.0,1.0,GB,1,Air Atlanta Europe (United Kingdom),False
+PZ,Lineas Aereas Paraguayas,PY,iata,1439.0,1.0,PY,1,TAM Mercosur (Paraguay),False
+CW,Air Marshall Islands Inc.,MH,iata,1435.0,0.9714285714285714,MH,1,Air Marshall Islands (Marshall Islands),False
+NOS,Neos S.P.A,IT,icao,1427.0,1.0,IT,1,Neos (Italy),False
+RL (1),Aerolineas Nicaraguenses,JO,iata,1344.0,0.0,NI,1,Royal Falcon (Jordan),True
+J2,Azerbaijan Airlines CJSC,AZ,iata,1316.0,1.0,AZ,1,Azerbaijan Airlines (Azerbaijan),False
+PIQ,Pacific International Airlines,US,name_exact,1298.0,0.0,PA,1,Pacific International Airlines (United States),True
+7G,MK Airlines Ltd.,JP,iata,1288.0,0.0,LU,1,Star Flyer (Japan),True
+A7 (2),Air Comet S.A.,ES,iata,1270.0,1.0,ES,1,Air Plus Comet (Spain),False
+GF,Gulf Air B.S.C. (C),BH,iata,1194.0,0.5477386934673367,BH,1,Gulf Air Bahrain (Bahrain),False
+LU,Air Atlantic Dominicana,CL,iata,1122.0,0.0,DO,1,LAN Express (Chile),True
+CAZ,CAT Aviation,CH,icao,1064.0,0.6193609022556391,CH,1,Cat Aviation (Switzerland),False
+SVW,"Global Jet Luxembourg, Sa",LU,icao,1057.0,0.000946073793755913,FR,1,Global Jet Luxembourg (Luxembourg),False
+6H,Israir Airlines,IL,iata,1036.0,1.0,IL,1,Israir (Israel),False
+JZ,Japan Air Charter Co. Ltd.,SE,iata,1010.0,0.0,JP,1,Skyways Express (Sweden),True
+Y7,Flyjet Limited d/b/a Silverjet,RU,iata,1010.0,0.0,GB,1,NordStar Airlines (Russia),True
+DC,Caribbean Air Cargo Co Ltd.,SE,iata,990.0,0.0,TT,1,Golden Air (Sweden),True
+5J,Cebu Air Inc d/b/a Cebu Pacific Air,PH,iata,988.0,1.0,PH,1,Cebu Pacific (Philippines),False
+02Q,Titan Airways,GB,name_exact,947.0,0.337909186906019,GB,1,Titan Airways (United Kingdom),False
+UO,Hong Kong Express Airways Limited,HK,iata,752.0,1.0,HK,1,Hong Kong Express Airways (Hong Kong SAR of China),False
+SMQ,Serv. Aerolineas Mexicanas,TJ,icao,734.0,0.0,MX,1,Samar Air (Tajikistan),True
+RTQ,Aerotour Dominicano Cxa,FR,icao,715.0,0.0,DO,1,Air Turquoise (France),True
+LL,LEVEL,MX,iata,701.0,0.0,ES,1,Allegro (Mexico),True
+KJ,AIRZETA CO Ltd.,GB,iata,660.0,0.0,KR,1,British Mediterranean Airways (United Kingdom),True
+APQ,Alas De Transporte International,US,icao,620.0,0.0,DO,1,Aspen Aviation (United States),True
+AE,Air Europe Limited,TW,iata,596.0,0.0,GB,1,Mandarin Airlines (Taiwan),True
+7M,Aeromonterrey S.A.,MN,iata,583.0,0.0,MX,1,Mongolian International Air Lines  (Mongolia),True
+HJ,Air Haiti S. A.,AU,iata,582.0,0.0,HT,1,Asian Express Airlines (Australia),True
+9T,"TravelspanGT, Inc. S.A.",CA,iata,578.0,0.0,TT,1,Transwest Air (Canada),True
+LV,OPENSKIES SAS,AL,iata,564.0,0.0,FR,1,Albanian Airlines (Albania),True
+PPQ,Propair,MX,icao,544.0,0.0,CA,1,Personas Y Pasquetes Por Air (Mexico),True
+12Q,Unijet,FR,name_exact,541.0,0.8243992606284658,FR,1,Unijet (France),False
+0J,JetClub AG,CH,iata,518.0,0.32625482625482627,CH,2,Jetclub (Switzerland); Jetclub (Switzerland),False
+WAP,Arrow Panama,PA,icao,514.0,0.39883268482490275,PA,1,Arrow Panama (Panama),False
+ADQ,Aeronaves Del Peru,CA,icao,507.0,0.0,PE,1,Avion Taxi (Canada),True
+MJ,Lapa-Lineas Aereas Privadas,AR,iata,503.0,0.9801192842942346,AR,1,L (Argentina),False
+SIQ,Premiair,LU,name_exact,483.0,0.0,SE,1,Premiair (Luxembourg),True
+SS,Corsair International,FR,iata,454.0,1.0,FR,1,Corsairfly (France),False
+CRV,Acropolis Aviation Ltd.,CI,icao,444.0,0.0,GB,1,Cargo Ivoire (Ivory Coast),True
+HB (1),Air Club International,US,iata,385.0,0.0,CA,1,Harbor Airlines (United States),True
+PE,Air Europe S.P.A.,IT,iata,335.0,0.9850746268656716,IT,1,Air Europe (Italy),False
+LS,Jet2.com,GB,iata,333.0,1.0,GB,1,Jet2.com (United Kingdom),False
+VSA,VistaJet Luftfahrtunternehmen GmbH,ZA,icao,324.0,0.0,GB,1,Avstar Aviation (South Africa),True
+OV,Aeromaritime,EE,iata,310.0,0.0,FR,1,Estonian Air (Estonia),True
+GW (1),Central American Airlines,RU,iata,310.0,0.0,NI,1,Kuban Airlines (Russia),True
+WGT,Volkswagen AirSevice GmbH dba Volkswagon,GB,icao,308.0,0.16233766233766234,DE,1,Lion Air Services (United Kingdom),False
+BC,Skymark Airlines Inc.,JP,iata,280.0,1.0,JP,1,Skymark Airlines (Japan),False
+1XQ,Dassault Falcon Service,FR,name_exact,278.0,0.7050359712230215,FR,1,Dassault Falcon Service (France),False
+PDQ,Antigua Paradise Airways,US,icao,276.0,0.0,AG,1,PDQ Air Charter (United States),True
+MM,Euro Atlantic Airways,JP,iata,266.0,0.0,UA,1,Peach Aviation (Japan),True
+NB,Sterling Cargo,DK,iata,261.0,0.7586206896551724,DK,1,Sterling Airlines (Denmark),False
+LG,Luxair,LU,iata,246.0,1.0,LU,1,Luxair (Luxembourg),False
+TIQ,Tyrolean Jet Service,AT,name_exact,242.0,0.08264462809917356,GB,1,Tyrolean Jet Service (Austria),False
+OB,Oasis International Airlines S.A.,RU,iata,226.0,0.0,ES,1,Astrakhan Airlines (Russia),True
+FB,Translift Airways Limited,BG,iata,209.0,0.0,IE,1,Bulgaria Air (Bulgaria),True
+FP,TAG Aviation S.A.,US,iata,208.0,0.0,CH,1,Freedom Air (United States),True
+Q2,Zambia Airways Corp.,MV,iata,188.0,0.0,GM,1,Maldivian (Maldives),True
+IGA,"Global Jet Austria, GmbH",PL,icao,183.0,0.0,GB,1,Skytaxi (Poland),True
+PP,Jet Aviation Business Jets AG,PK,iata,177.0,0.0,CH,1,Air Indus (Pakistan),True
+7B,Krasair,RU,iata,168.0,1.0,RU,1,Krasnojarsky Airlines (Russia),False
+2P,"Air Philippines Corp d/b/a Airphil Express, Philippines Airlines",PH,iata,165.0,1.0,PH,1,Air Philippines (Philippines),False
+TRQ,Blue Scandinavia Ab,NL,icao,161.0,0.0,SE,1,Turdus Airways (Netherland),True
+9N,ANA & JP Express Co. Ltd.,IS,iata,138.0,0.0,JP,1,Regional Air Iceland (Iceland),True
+R3,Air Company Yakutia,RU,iata,138.0,1.0,RU,1,Aircompany Yakutia (Russia),False
+Q7 (1),Sobelair,BS,iata,136.0,0.0,BE,1,SkyBahamas Airlines (Bahamas),True
+JAG,JetAlliance Flugbetriebs d/b/a JAF Airservice,AT,icao,132.0,0.03787878787878788,GB,1,Jetalliance (Austria),False
+4H,Belize Trans Air,BD,iata,130.0,0.0,BZ,1,United Airways (Bangladesh),True
+VK,Air Tungaru Corporation,NG,iata,124.0,0.0,KI,1,Virgin Nigeria Airways (Nigeria),True
+PTQ,Pontair Ltd.,US,icao,123.0,0.0,ES,1,Port Townsend Airways (United States),True
+BTQ,Brasair Transportes Aereos,US,icao,114.0,0.0,BR,1,Boutique Air (Priv) (United States),True
+SWQ,Swiss Private Jet S.A.,US,icao,108.0,0.0,CH,1,Swift Air (Interstate Equipment Leasing) (United States),True
+6B,TUIfly Nordic A.B.,SE,iata,107.0,0.19626168224299065,NO,1,TUIfly Nordic (Sweden),False
+4T,Belair Airlines Ltd.,CH,iata,106.0,0.9622641509433962,CH,1,Belair Airlines (Switzerland),False
+BES,Aeroservices Executive,FR,icao,105.0,0.8761904761904762,FR,1,Aero Services Executive (France),False
+AAQ,Advance Air Charters,FI,icao,95.0,0.0,CA,1,Copterline (Finland),True
+CAQ,Challenge Air Luftverkehrs GmbH,GB,icao,91.0,0.06593406593406594,DE,1,Cityair (Chester) Limited (United Kingdom),False
+ATQ,Bairline Fluggesellschaft,NL,icao,91.0,0.01098901098901099,GB,1,Air Transport Schiphol (Netherlands),False
+XF,Vladivostok Air,RU,iata,89.0,0.9887640449438202,RU,1,Vladivostok Air (Russia),False
+SBQ,Skyjet S.A.,US,icao,58.0,0.0,GH,1,Smithkline Beacham Clinical Labs (United States),True
+DB,Maleth Aero AOC Ltd.,FR,iata,44.0,0.0,GB,1,Brit Air (France),True
+ZS,Hispaniola Airways,SA,iata,39.0,0.0,DO,1,Sama Airlines (Saudi Arabia),True
+AZQ,Anglo Airlines Ltd.,AZ,icao,29.0,0.0,GB,1,Silk Way Airlines (Azerbaijan),True
+KM,Air Malta,MT,iata,24.0,0.0,IE,1,Air Malta (Malta),True
+ALQ,Alliance Executive Jets Ltd.,CA,icao,22.0,0.0,DE,1,Altair Aviation (1986) (Canada),True
+EXC,Hapag-Lloyd Executive GmbH,SE,icao,18.0,0.0,DE,1,European Executive Express (Sweden),True
+WL (1),World Air Network,FR,iata,15.0,0.0,JP,1,CheapFlyingInternational (France),True
+FK,Flightcraft Air Charter Ltd dba KF Aeroflyer,TG,iata,14.0,0.0,CA,1,Africa West (Togo),True
+ASQ,Aerosur (1),US,icao,13.0,0.0,UY,1,Atlantic Southeast Airlines (United States),True
+PU,Primeras Lineas Uruguays For International,UY,iata,6.0,1.0,UY,1,PLUNA (Uruguay),False
+AAB,Abelag Aviation AG,BE,icao,4.0,1.0,BE,1,Abelag Aviation (Belgium),False
+M2,MHS Aviation GmbH,DE,name_exact,4.0,0.0,GB,1,MHS Aviation GmbH (Germany),True
+GE,Lufthansa Cargo Airlines,TW,iata,2.0,0.0,DE,1,TransAsia Airways (Taiwan),True
+WPT,World2Fly Portugal SA,CA,icao,2.0,0.0,ES,1,Wapiti Aviation (Canada),True
+ZL,Affretair,AU,iata,1.0,0.0,ZW,1,Regional Express (Australia),True

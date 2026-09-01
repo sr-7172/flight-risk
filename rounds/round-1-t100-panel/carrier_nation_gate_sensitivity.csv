@@ -1,0 +1,5 @@
+cut,scope,departures_total,departures_matched_or_adjusted,rate,note
+coverage_all_tiers,foreign,19735573.0,17803659.0,0.9021100628798566,as reported in carrier_nation_matchrate.csv row category=foreign; the coverage reading.
+coverage_excl_icao_tier,foreign,19735573.0,17756314.0,0.8997110952897086,icao tier carries 47345 matched departures at 0.01-threshold precision shown in carrier_nation_tier_precision.csv row match_method=icao (share_home0_dep~0.49); excluding it alone drops foreign coverage below G7_FOREIGN_MIN. Sensitivity only -- neither reading is the answer.
+coverage_excl_icao_tier,overall,47352549.0,45373290.0,0.9582016376774142,"same exclusion, overall scope, for completeness."
+coverage_margin_over_g7_min,foreign,19735573.0,41643.30000000016,0.0021100628798566,"the coverage reading clears G7_FOREIGN_MIN (0.90) by this many departures; icao-tier matched departures (47345) exceed this margin, so the icao tier alone can flip the coverage reading's verdict."
