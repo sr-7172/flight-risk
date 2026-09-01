@@ -1,0 +1,8 @@
+[2026-09-01 21:05:30] 00_bootstrap_manifest INFO: data/raw/t100/ has 36 CSV(s) already present — skipping fetch (step 1 applies).
+[2026-09-01 21:05:30] 00_bootstrap_manifest INFO: Wrote 38 rows to /workspaces/flight-risk/rounds/round-1-t100-panel/bootstrap_manifest.csv
+[2026-09-01 21:05:30] 00_bootstrap_manifest INFO: header_verified: 38 True, 0 False (of 38 rows)
+[2026-09-01 21:05:30] 00_bootstrap_manifest INFO: FIX-00 DONE.
+[2026-09-01 21:07:39] 00_bootstrap_manifest INFO: data/raw/t100/ has 36 CSV(s) already present — skipping fetch (step 1 applies).
+[2026-09-01 21:07:39] 00_bootstrap_manifest INFO: Wrote 38 rows to /workspaces/flight-risk/rounds/round-1-t100-panel/bootstrap_manifest.csv
+[2026-09-01 21:07:39] 00_bootstrap_manifest INFO: header_verified: 38 True, 0 False (of 38 rows)
+[2026-09-01 21:07:39] 00_bootstrap_manifest INFO: FIX-00 DONE.
