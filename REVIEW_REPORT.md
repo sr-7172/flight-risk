@@ -2172,3 +2172,691 @@ BLOCKED-NEEDS-HUMAN — build allowed, nation-level reporting not) and the
   compatible with every branch and does not pre-commit the choice.
 
 **VERDICT: PASS**
+
+---
+
+## FIX-04 review — 2026-09-02 01:20 UTC
+
+Scope: `code/04_panel/04_build_panel.py`, `data/interim/panel_monthly.parquet`,
+`data/interim/panel_extensive.parquet`, `rounds/round-1-t100-panel/desc_sample.csv`,
+`rounds/round-1-t100-panel/panel_filter_log.csv`. I rebuilt the entire panel
+independently from `t100_raw.parquet` + `carrier_nation.parquet` with my own
+read/merge/aggregate path and compared cell by cell.
+
+### Checks run (recomputed, not reread)
+
+**Full independent reconstruction of `panel_monthly.parquet`.** Outer-merged my
+rebuild against the shipped parquet on `(origin, dest, nation, year, month)`:
+**1,026,729 rows, all `both`, 0 left_only, 0 right_only**, and **max abs diff
+0.0** with **0 null-pattern mismatches** on `airborne_min_mean`,
+`air_time_total`, `distance`, `fleet_share_top_type`, `share_dep_home0`,
+`departures_performed`, `n_carriers`, `n_aircraft_types`, `n_rows_raw`.
+Every implementer row count reproduces: 1,026,729 cells; `cell_ok` **517,076**;
+`cell_ok_8` **476,207**; `cell_ok_precision` **515,983**.
+
+**Structural-zero guard — the item I said I would look for first. It holds.**
+- `panel_monthly`, `nation != 'US'`: **457,018 cells**, and for each of
+  `air_time_total`, `ramp_total`, `airborne_min_mean`, `ramp_min_mean` the
+  non-null count is **0** and the `== 0` count is **0**. Not zeros dressed as
+  data; genuinely absent. `airborne_available` and `ramp_available` are True on
+  **0** of the 457,018. `departures_scheduled` (also US-only per my FIX-03
+  ruling) is null on all 458,129 non-reporting cells.
+- Row level: on the matched passenger sample (1,749,156 rows) I find **0 rows**
+  with `CARRIER_GROUP ∈ {1,2,3,7}` mapped to a non-US nation. Confirmed against
+  the raw field, not the mapping.
+- No laundering downstream: the only columns that touch `AIR_TIME`/
+  `RAMP_TO_RAMP` are the five nulled ones. `distance`, `fleet_share_top_type`,
+  `share_dep_home0`, `n_carriers`, `n_aircraft_types` are volume-side and
+  legitimately populated for foreign cells. No ratio, share or fleet variable
+  divides by or multiplies a structural zero anywhere in either parquet.
+- **Mutation tests (5), isolated root at `/tmp/fix04mut` with only the input
+  parquets symlinked, all writes redirected to /tmp:** baseline exit 0 and
+  identical figures; (A) `US_GROUP_CODES = {0,1,2,3,7}` → **exit 1**, logs
+  "GUARD VIOLATED: 741262 matched rows"; (B) `has_time = departures_performed
+  > 0` → **exit 1**, "GUARD VIOLATED at cell level: 457018 non-US cells with a
+  non-null airborne value" (this is the catastrophic branch — every foreign
+  cell would have shown `airborne_min_mean = 0.0`; the guard stops it before
+  the parquet is written); (C) `d = intensive.drop_duplicates()` → **exit 1**
+  on the `n_rows_raw` assertion; (D) `PANEL_END = (2025,11)` → **exit 1**,
+  "VERIFY FAIL: panel_extensive has 8790245 rows, expected 8810640"; (E)
+  `desc_sample` built on `cell_ok_8` → **exit 1** on the TOTAL assertion.
+  All five assertions are real, not decorative.
+
+**VERIFY item 1** — `desc_sample.csv` TOTAL `n_cells` = **517,076**; parquet
+rows with `cell_ok == True` = **517,076**. PASS.
+
+**VERIFY item 2** — `panel_extensive.parquet` = **8,810,640 rows**; distinct
+`(origin, dest, nation)` triples = **20,395**; every triple has exactly **432**
+rows; 432 distinct year-months spanning 1990-01..2025-12; 20,395 × 432 =
+8,810,640. PASS. **Judgment on the reading:** the implementer's definition is
+the correct one. The round file's deliverable text is unambiguous — "every
+`(origin, dest, nation)` ever observed × every month 1990–2025" — and the
+VERIFY checkbox's "routes × nations observed" is loose shorthand for the same
+thing. The alternative reading (13,678 routes × 93 nations × 432 months) is
+**549,527,328 rows**, 98.4% of them combinations no nation ever flew; it is not
+a panel, it is a fabrication. Triple reading accepted.
+
+**Filter-log reconciliation (item 3).** Recomputed from the source: passenger
+2,662,470 → 1,819,635 (−842,835); `icao` 347; unmatched 57,678 + refused
+11,939 = 69,617; null carrier 515; matched 1,006,123 + 725,704 + 17,329 =
+1,749,156; departures>0 → 1,745,101 (−4,055). Every logged number matches
+exactly, the chain closes to 2,662,470 with no residual, every row has a
+`reason`, and I verified the three drop classes are mutually disjoint (a
+non-null carrier with no `match_method` would trip the `unexpected` branch;
+there are none). Cell-level rows are flags, not drops, and partition exactly:
+457,018 + 52,635 = 509,653 = 1,026,729 − 517,076.
+
+**Aggregation without a uniqueness assumption (item 4).** `n_rows_raw` sums to
+**1,745,101**, exactly the detail-row count, asserted in code and reproduced by
+me. No `drop_duplicates` anywhere. My reconstruction independently reproduces
+`n_carriers`, `n_aircraft_types` and `n_rows_raw` with max diff 0, including on
+cells fed by up to 60 detail rows. FIX-01 advisory 4 is discharged.
+
+**covid_flag (item 5).** Exactly **22 months** flagged, 2020-03 through
+2021-12, all-or-nothing within each month; 2020-01 and 2020-02 are 0.0,
+2020-03 is 1.0, 2021-12 is 1.0, 2022-01 is 0.0. True monthly window, no annual
+coarsening. PASS. Present on both parquets.
+
+**icao tier and precision flags (item 6).** `match_method == 'icao'` appears
+**0 times** in the panel population; the 347 rows are dropped and logged.
+`nation_precision_flag` and `cell_ok_precision` are present and correctly
+constructed (25,842 flagged cells; RU 7,659 and IR 5,003 lead, per my FIX-02
+condition). `cell_ok_precision` = 515,983 = 517,076 − 1,093.
+
+**G-gates.** G1 PASS — no null cell keys, no duplicate cell keys on
+(origin,dest,nation,year,month), 1,026,729 unique; the only nulls in the file
+are the 458,129 deliberately-absent time cells. G2/G3/G4 N/A (no estimation in
+this task). G5 PASS — `fleet_share_top_type` ∈ [0.1741, 1.0] with 0 nulls,
+`share_dep_home0` ∈ [0.0, 1.0] with 0 nulls. G6 inherited PASS and verified:
+`coverage_ok` is **exactly** the indicator `nation == 'US'`; all 36 US
+nation-years pass, **0 of 2,213** non-US nation-years pass; 0 panel
+nation-years missing from `coverage_audit.csv`. G7 remains
+BLOCKED-NEEDS-HUMAN; no nation-level number is reported out of this task.
+
+**Standard.** `python code/99_validate_outputs.py` → **20 CSVs scanned, 0 FAIL,
+0 WARN, exit 0**; both new CSVs are inside `rounds/round-1-t100-panel/` and
+covered by the scan. `python code/98_check_trino_usage.py` → exit 0. No
+network/Trino/OpenSky reference in the script. `setup_logger` and `log_merge`
+used on both merges (the carrier merge logs 1,819,120 both / 515 left_only;
+the extensive grid merge logs 8,810,640 left / 1,027,372 right). Re-run is
+**byte-identical** on all four artifacts (sha256 compared before/after).
+No result number is typed anywhere in the CSVs — all generated.
+
+### BLOCKING defects
+
+**B1. The task's own headline sub-finding is false, and it is committed to the
+repo.** The docstring (lines 25–27) and the runtime log both say a handful of
+US-mapped codes "`VX, B0, ASQ`" carry `CARRIER_GROUP == 0`, and the implementer
+reported this to me as "a US-flag carrier filing on the foreign schedule … if
+real the director should carry it". It is not real, and the truth is the
+opposite. The three codes actually present are:
+
+| code | `CARRIER_NAME` in T-100 | actual nationality | rows | departures |
+|---|---|---|---|---|
+| `VX (1)` | Aces Airlines | **Colombia** (Aerolíneas Centrales de Colombia) | 795 | 19,410 |
+| `B0` | Dreamjet SAS Dba La Compagnie | **France** | 480 | 10,871 |
+| `WO` | SWOOP Inc. | **Canada** (WestJet's ULCC) | 496 | 4,887 |
+
+`ASQ` appears **0 times** in the matched passenger sample (6 times in all of
+T-100). `VX` proper (Virgin America, 2010–2018, `us_by_construction`, groups
+1/2/3) is a genuine US carrier and is not one of these. These are not US
+carriers on the foreign schedule — they are **three foreign carriers that
+FIX-02 mis-mapped to nation `US`** via IATA-code collisions, and BTS's own
+`CARRIER_GROUP == 0` is telling us so. FIX-02 already documented the collisions
+(`carrier_nation_precision_audit.csv`, rows `VX (1)`/`B0`/`WO`:
+`home_country_dep_share` **0.0** on all three, `candidate_names` literally
+"Virgin America (United States)", "Aws express (United States)", "World Airways
+(United States)"), and their observed endpoint countries are CO/DO, FR/GB/ES/
+IT/BE/IE/MA/SK/SX and CA respectively. The *code* is unaffected — the guard
+keys on `CARRIER_GROUP`, not on the nation label, so it does the right thing —
+but this narrative would have entered ROUND_01_FINDINGS.md as a discovered fact
+about US carriers. It is a fabricated fact and it reverses a G7 precision
+failure into a benign curiosity. Fix the docstring and the log line; carry the
+true version.
+
+**B2. The airborne denominator is computed and then thrown away, and
+`departures_performed` silently mixes reporting and non-reporting departures.**
+`dep_for_time` (line 294, the denominator of `airborne_min_mean`) is dropped at
+line 308. `departures_performed` sums **all** matched rows including the
+`CARRIER_GROUP == 0` ones. Consequence, recomputed: **1,681** `cell_ok` US
+cells contain at least one mis-mapped foreign departure — 1,041 pure cells
+(caught by `cell_ok_precision`, `share_dep_home0 == 1.0`) plus **640 mixed
+cells, of which 588 survive `cell_ok_precision`** because their foreign share
+sits below the 0.50 threshold (median 0.2559, **max 0.9688**). **35,051**
+foreign departures sit inside `cell_ok` US cells, 14,975 of them inside mixed
+cells where `airborne_min_mean` was computed on a strictly smaller denominator
+than `departures_performed`. Any departures-weighted mean of `airborne_min_mean`
+in FIX-05 or NEW-06 — which is exactly what NEW-06 commissions — will weight
+those cells by a count that includes flights excluded from the number being
+weighted, and in the worst cell 96.9% of the weight is foreign. There is no
+column in the panel that lets a downstream task see this. It costs one line to
+keep.
+
+**B3. Part 0's "missing is not zero" rule is violated inside the US sample.**
+Part 0: "Rows with `DEPARTURES_PERFORMED > 0` and `AIR_TIME = 0` or null are
+reporting gaps … never imputed." **60** time-eligible detail rows (483
+departures) report `AIR_TIME == 0` with departures > 0 and are summed into
+their cells as a literal zero. Result: **32 US cells** where every eligible row
+is a gap get `airborne_min_mean = 0.0` **with `airborne_available = True`** —
+**19 of them are `cell_ok == True`** — plus **26 diluted cells** (25 `cell_ok`)
+where real minutes are averaged against zero-minute gap departures, median
+dilution 0.2105, **max 0.3867**. This is the same fabricated-zero pathology the
+guard was built to stop, surviving at the US-cell level because the guard is
+keyed on nation rather than on the reported value. The magnitude is tiny
+(483 of 24,320,765 US-eligible departures, 0.002%) but a 0-minute mean flight
+is the extreme left tail of FIX-05's `excess_min`, it will set p1 on any thin
+route, and the rule is written in the round file in so many words.
+(Note: the `.fillna(0.0)` calls on lines 252–254 are no-ops — the eligible
+population has **0** nulls in `AIR_TIME`, `RAMP_TO_RAMP` and
+`DEPARTURES_SCHEDULED`. The defect is the reported zeros, not the fill.)
+
+### ADVISORIES (not blocking; carry them)
+
+**A1. Extreme values — my ruling on item 7. `9999` is NOT a sentinel here, and
+that matters.** I inventoried every `9999` in the raw source: 25 rows with
+`AIR_TIME == 9999` and 22 with `RAMP_TO_RAMP == 9999`, 41 of them passenger
+class. Because `AIR_TIME` is a **monthly total**, 46 of the 47 are entirely
+unremarkable — e.g. NW BOS–AMS 1990-10, 28 departures, 9999 minutes = 357
+min/departure over 3,457 miles = 581 mph. Exactly **one** row is impossible:
+`M5` (Kenmore Air) `YGE→LKE` 2025-10, **1 departure**, `AIR_TIME 9999`,
+`RAMP_TO_RAMP 10004`, distance 207 — 166 hours for a 207-mile seaplane hop.
+The ramp value being 9999+5 suggests the corrupted field is
+`DEPARTURES_PERFORMED`, not `AIR_TIME`. That cell is already `cell_ok == False`
+(1 departure < 4). So: **benign raw-data passthrough for a construction task**,
+and FIX-05 must **not** screen on the literal value 9999 — that would delete 46
+good cells. The real screen is implied ground speed. Quantified for FIX-05:
+among 516,035 `cell_ok` cells with airborne data, implied speed
+(`distance / (airborne_min_mean/60)`) has median 467.3 mph, p1 176.4, p99
+589.2; **162 cells (0.0313%)** are below 50 mph or non-finite, concentrated on
+seaplane/short-hop routes (`KEH↔YWH` 27 cells at ~49 mph, `FRD↔YYJ`, `VIJ↔STT`,
+`FXE↔SAQ/CCZ/TZN`, `NSB↔FLL`); **80 `cell_ok` cells** exceed 1,000 min/departure,
+worst `NSB→FLL` 2018-02 at 2,433 min/departure over 59 miles. FIX-05's 1/99
+winsorization is *within route × direction*, so a persistently-inflated route
+cancels through its own baseline — but the 19 zero cells (B3) and the
+non-finite-speed cells do not. **Contamination FIX-05 must handle explicitly,
+by an implied-speed screen documented in `desc_outcomes.csv`, not by a 9999
+rule.**
+
+**A2. `distance == 0`.** **50 panel cells**, of which **2** are `cell_ok`
+(`SWL↔WFB`, 2002-04, 24 min mean, 24 departures) — 3.9e-06 of the `cell_ok`
+sample, on 2 distinct routes. 253 raw rows carry `DISTANCE == 0` (86
+passenger). Benign passthrough; `distance` is never a denominator in FIX-04.
+FIX-05/NEW-06 must not divide by it.
+
+**A3. The extensive margin's entry/exit flags are mostly seasonality, not
+market entry/exit.** This is the output my FIX-03 ruling called "the round's
+most valuable", so it needs saying plainly. Of **80,260** exits, **63,255
+(78.8%)** are followed by a later re-entry on the same triple; **50.9%** of
+exits re-enter within 12 months and **23.1%** within 3 months (median gap 7
+months). **58.8%** of the 20,395 triples have more than one entry (mean 4.10,
+max 88), and the median triple is active in only **5** of 432 months, with
+**46.2%** active in ≤3 months ever. `months_since_exit` correctly resets to 0
+at each exit (verified: 80,260 zeros, exactly matching `exit_flag`; NaN on all
+1,026,729 active rows and on all pre-entry rows). The mechanics are right; the
+economics are not what the labels suggest. Any later event study using
+`exit_flag` as "the nation stopped serving this route" would be ~79% noise. A
+spell-based definition (exit requires k consecutive inactive months) is needed
+before this variable carries any weight.
+
+**A4. 311 routes vanish without a cell-level log row.** 13,989 routes appear in
+the passenger population; 13,678 survive into `panel_extensive`. The 311
+missing ones are served exclusively by unmatched/icao/null carriers, so they
+have no nation and cannot form a triple — necessary, but it is a drop with a
+reason and belongs in `panel_filter_log.csv` at the route level (41,348
+departures, 0.099% of passenger departures). The round file's gate is "every
+drop … has a reason"; this drop has no row.
+
+**A5. Write-before-assert, second occurrence.** `desc_sample.csv` is written
+(line 513) before its TOTAL assertion (line 519), and `panel_monthly.parquet`
+is written (line 396) before the `panel_extensive` VERIFY (line 444). Under
+mutations D and E the script correctly exits 1 — with a wrong CSV and a
+parquet already on disk. Same pattern flagged as FIX-01 advisory 1 and still
+open.
+
+**A6. Cell-level filter-log framing.** `min_cell_size_4` reports `n_before =
+1,026,729 → n_after = 974,094`, but the 52,635 dropped are counted only within
+`coverage_ok` cells. The arithmetic is right and the `reason` column says so;
+the `n_before` column reads as a sequential chain that it is not.
+
+**A7. Two COVID windows exist.** FIX-04 uses PROJECT.md line 74 / Part 0's
+baseline-exclusion window 2020-03..2021-12 — correct. PROJECT.md line 142 also
+defines a wider *event* flag window 2020-01..2022-01. NEW-06 must not conflate
+them.
+
+**A8. Minor data-quality notes for the record.** `ramp_min_mean <
+airborne_min_mean` in **4** of 568,600 cells (ramp-to-ramp must exceed air
+time). `departures_scheduled == 0` with departures performed > 0 in **23,565**
+cells (60,248 raw rows) — genuine in T-100 (extra sections), but a completion
+factor built on it would be wrong, and in the 640 mixed cells the numerator and
+denominator have different populations (B2). `n_carriers` counts reissue
+suffixes as separate carriers (`VX` vs `VX (1)`).
+
+**A9. Deliverable wording.** The round file asks `panel_extensive` for "entry
+month, exit month(s)"; the implementer delivered `entry_flag`/`exit_flag`
+indicators. Informationally equivalent and I accept it, but the FINDINGS should
+say so rather than leave a reader hunting for a month column.
+
+**A10. Not yet committed.** `code/04_panel/`, `logs/04_build_panel.log`,
+`desc_sample.csv` and `panel_filter_log.csv` are untracked. Commit after the
+required actions land.
+
+### Required actions
+
+1. Correct the false carrier identification (B1) in the `04_build_panel.py`
+   docstring and in the runtime log line. Name the three codes as they appear
+   in the data (`VX (1)`, `B0`, `WO`), give their T-100 `CARRIER_NAME`s, state
+   that they are **foreign carriers mis-mapped to `US` by FIX-02 IATA
+   collisions** (traceable to `carrier_nation_precision_audit.csv`,
+   `home_country_dep_share == 0.0` on all three), and remove `ASQ`. Do not
+   describe them as US carriers anywhere. Testable: `grep -c ASQ
+   code/04_panel/04_build_panel.py` returns 0, and the log line names all three
+   real codes.
+2. Retain the airborne denominator on `panel_monthly.parquet` as its own
+   column (`departures_time_eligible`, = the current `dep_for_time`), and add
+   `departures_non_reporting = departures_performed − departures_time_eligible`
+   or an equivalent. Assert in code that
+   `departures_time_eligible <= departures_performed` and that it is 0 on every
+   non-US cell. Testable: both columns present; the recomputed count of
+   `cell_ok` cells with `departures_non_reporting > 0` equals **1,681**.
+3. Honour Part 0 on within-US reporting gaps (B3): exclude time-eligible rows
+   with `AIR_TIME == 0` from **both** the numerator and the denominator of
+   `airborne_min_mean` (same for `RAMP_TO_RAMP == 0` and `ramp_min_mean`), so
+   an all-gap cell gets `NaN` and `airborne_available == False` rather than
+   0.0/True. Log the excluded rows as their own named step in
+   `panel_filter_log.csv` with a reason. Testable: after the fix,
+   `((airborne_min_mean == 0) & airborne_available).sum() == 0` and the count
+   of `cell_ok` cells with `airborne_min_mean == 0` falls from **19** to **0**;
+   the new log step shows **60** rows / **483** departures.
+4. Add a route/triple-level row to `panel_filter_log.csv` for the **311**
+   routes (41,348 departures) that leave `panel_extensive` because every
+   carrier serving them is unmatched/icao/null, with the reason stated.
+5. Move `desc.to_csv` after its TOTAL assertion and `panel.to_parquet` after
+   the `panel_extensive` row-count VERIFY, so a failed run leaves no artifact
+   on disk. Re-run mutations D and E to confirm no file is written.
+6. Add the extensive-margin churn diagnostic (A3) to the round folder as a CSV
+   — exits, share re-entering within 3/12 months, entries per triple, active
+   months per triple — so the seasonality caveat is G9-citable rather than
+   living in this report. It must not be reported as a result; it is a
+   construction caveat.
+7. Re-run; confirm byte-identical on everything except the deliberately changed
+   columns, validator and trino checker exit 0, and all five mutation tests
+   still exit 1.
+
+### For the director to carry into ROUND_01_FINDINGS.md
+
+1. **The panel is built and the structural-zero guard works.** 1,026,729 cells;
+   457,018 non-US cells carry a null airborne time, never a zero; verified by
+   mutation test that the guard exits 1 rather than shipping 457,018 fabricated
+   zero-minute foreign cells. *(panel_filter_log.csv, rows `coverage_ok_g6`;
+   desc_sample.csv, row `TOTAL`.)*
+2. **The headline sample is 100% US and this is visible on the face of
+   `desc_sample.csv`**: `n_nations == 1` in every decade row and in TOTAL. That
+   is the FIX-03 blocker made concrete, not a coding choice.
+   *(desc_sample.csv, `decade_summary` rows.)*
+3. **Three foreign carriers are inside the US sample.** `VX (1)` Aces Airlines
+   (Colombia), `B0` La Compagnie (France), `WO` Swoop (Canada) are mapped to
+   `US`; 1,681 `cell_ok` cells contain at least one of their departures,
+   35,051 departures in total, and 588 of those cells survive
+   `cell_ok_precision`. Report it as a G7 precision failure, not as a US-carrier
+   curiosity. *(carrier_nation_precision_audit.csv, rows `VX (1)`/`B0`/`WO`,
+   column `home_country_dep_share`; panel_monthly `nation_precision_flag`.)*
+4. **The extensive margin is the round's surviving asset but its entry/exit
+   flags are ~79% seasonality** (A3). State the churn numbers before anyone
+   designs an exit event study on them.
+5. **Extreme-value inventory for FIX-05** (A1/A2): one impossible cell at 9999
+   (already excluded), 80 `cell_ok` cells above 1,000 min/departure, 162 below
+   50 mph implied speed, 2 `cell_ok` cells at `distance == 0`, 19 `cell_ok`
+   cells at exactly 0 minutes pending required action 3. `9999` is **not** a
+   sentinel in this source and must not be screened on.
+6. The G6/G7 embargo is intact: no nation-level number is reported out of
+   FIX-04, and `cell_ok_precision` is carried so a later task can take the
+   strict sample without recomputing it.
+7. Carried forward and still open: FIX-01's write-before-assert pattern (A5),
+   now in its second script.
+
+### FIX-05 permission
+
+**FIX-05 may NOT proceed on this panel as it stands.** Required actions 2 and 3
+change columns FIX-05 reads: action 2 supplies the only correct weight for a
+departures-weighted mean of `airborne_min_mean`, and action 3 removes 19
+zero-minute cells that would otherwise define the left tail of `excess_min` and
+the p1 winsorization cutoff on thin routes. Rebuilding baselines, MAD, excess
+and the bidirectional sum twice is worse than one review cycle. Once actions
+2, 3 and 7 land and this task passes, **FIX-05 may proceed** on
+`panel_monthly.parquet` under the unchanged terms of my FIX-03 ruling: an
+explicitly all-US computation, labelled "US carriers' airborne time on
+US-touching international segments", never "the carrier-nation wedge", with G8
+asserted in code, the true monthly COVID window, and an implied-speed screen
+documented in `desc_outcomes.csv`. Nothing else in the panel needs to change —
+the keys, the aggregation, the extensive grid, the filter log and both VERIFY
+items are correct.
+
+**VERDICT: FAIL**
+
+**Addendum (2026-09-02 01:22 UTC), process flag.** While this review was being
+written, FIX-05 artifacts appeared in the working tree — `code/05_outcomes/`,
+`logs/05_build_excess.log`, `desc_outcomes.csv`, `baseline_failures.csv`,
+`outcome_data_quality_exclusions.csv`, `figures/fig_excess_distribution.png`.
+FIX-05 therefore started against the **pre-fix** `panel_monthly.parquet`, i.e.
+before the FIX-04 verdict existed and before required actions 2 and 3. Under
+the permission ruling above those outputs are void and must be regenerated
+after FIX-04 passes; they are not reviewed here and no number in them may be
+cited. The overseer touched no file this round other than REVIEW_REPORT.md.
+
+---
+
+## FIX-04 (cycle 2) review — 2026-09-02 01:55 UTC
+
+**Scope.** Focused re-review of the seven required actions from the FIX-04
+cycle-1 FAIL. Only `code/04_panel/04_build_panel.py` changed. The cycle-1
+substantive verifications (panel rebuild at max abs diff 0, structural-zero
+guard, both VERIFY items, filter-log reconciliation to 2,662,470, covid_flag
+window) were not re-litigated but were re-confirmed as undisturbed.
+
+### Checks run (every number below independently recomputed by the overseer)
+
+**Independent panel rebuild.** I re-derived every cell from
+`data/interim/t100_raw.parquet` + `carrier_nation.parquet` with my own code
+(passenger → matched tier {iata, name_exact, us_by_construction} → departures>0
+→ groupby(origin,dest,nation,year,month)) and outer-merged against the shipped
+`panel_monthly.parquet`: **1,026,729 vs 1,026,729 rows, 1,026,729 `both`, 0
+`left_only`, 0 `right_only`**; max absolute difference **0.0** and zero NaN-pattern
+mismatches on `airborne_min_mean`, `ramp_min_mean`, `departures_performed`,
+`departures_time_eligible`, `air_time_total`, `n_rows_raw`.
+
+**Action 1 (B1, carrier identity).** `grep -c ASQ code/04_panel/04_build_panel.py`
+→ **0**. Runtime log line (01:35:10) names `['B0', 'VX (1)', 'WO']` with no
+other codes. Identities verified against the raw source, not the prose: in
+`t100_raw.parquet`, `VX (1)` = CARRIER_NAME "Aces Airlines", CARRIER_GROUP ∈ {0}
+only, 1992–2003, endpoint countries {CO, DO, US}; `B0` = "Dreamjet SAS Dba La
+Compagnie", group {0}, 2014–2025, endpoints {BE,ES,FR,GB,IE,IT,MA,SK}; `WO` =
+"SWOOP Inc.", group {0}, 2020–2023, endpoints {CA,US}. Distinct from `VX` =
+"Virgin America", groups {2,3}, 2010–2018 — the collision the docstring names.
+In `carrier_nation_precision_audit.csv` rows 90/110/146: all three
+`match_method == iata`, `home_country_dep_share == 0.0`, `flag_home_share_zero
+== True`, `top_endpoint_country` = CO / FR / CA respectively, candidate names
+"Virgin America (United States)" / "Aws express (United States)" / "World
+Airways (United States)". Every clause of the new docstring and log line is
+true. `ASQ` (Aerosur (1)) is confirmed icao-tier and therefore not in the panel
+at all — the cycle-1 finding stands and the name is gone.
+
+**Action 2 (B2, airborne denominator).** `departures_time_eligible` and
+`departures_non_reporting` both present on `panel_monthly.parquet`.
+`(departures_time_eligible <= departures_performed).all()` → **True**;
+`departures_time_eligible == 0` on all **457,018** non-US cells → **True**.
+`cell_ok` cells with `departures_non_reporting > 0` = **1,681** (matches),
+carrying **35,051** departures; **588** survive `cell_ok_precision` (matches).
+
+**Action 3 (B3, `AIR_TIME == 0` gaps) and the overcorrection test.**
+`((airborne_min_mean == 0) & airborne_available).sum()` = **0**;
+`cell_ok` cells with `airborne_min_mean == 0` = **0** (was 19);
+`((ramp_min_mean == 0) & ramp_available).sum()` = **0**;
+`(air_time_total == 0).sum()` = **0**. From the raw sample I recount the gap
+rows: **60 rows / 483.0 departures** with `AIR_TIME == 0` and **8 rows / 9.0
+departures** with `RAMP_TO_RAMP == 0` among CARRIER_GROUP-eligible,
+departures>0 rows — exactly the two new `exclude_from_time_agg` rows in
+`panel_filter_log.csv`.
+*Overcorrection audit.* Recomputing both the old (all-eligible denominator) and
+new (gap-excluded) means for all 1,026,729 cells: exactly **58** cells change,
+**32** to NaN and **26** in value; among `cell_ok`, **19** → NaN (precisely the
+19 zero cells) and **25** change value. Nothing else moved. Hand-recomputed
+four of them from the underlying detail rows:
+`DCA→YYZ 2003-10` — YV 46 dep/2,832 min plus JI (1) 29 dep/**0** air but 1,926
+ramp min → new airborne 2832/46 = **61.565** (old 37.760), ramp still uses both
+rows (correct: the two gap populations are handled separately, and this cell
+proves it);
+`CUN→DFW 2013-06` — SY 49 dep/**0** air/8,251 ramp excluded → 26046/184 =
+**141.554** (old 111.785);
+`FPO→FLL 2021-11` — NK 1 dep/0 air excluded → 220/7 = **31.429** (old 27.500);
+`CUN→CVG 2011-11` — sole row U5, 4 dep, 0 air, 642 ramp → airborne **NaN**,
+`airborne_available False`, ramp retained. No cell lost data it should have
+kept: `departures_performed` is unchanged in every one of the 1,026,729 cells
+(max diff 0.0), only `AIR_TIME == 0` rows leave the airborne aggregate.
+*Headline counts moved only as much as the fix explains.* `cell_ok` **517,076**
+(identical to cycle 1's run, log line 34 vs 167), `cell_ok_8` **476,207**,
+`cell_ok_precision` **515,983**, cells **1,026,729**, non-US **457,018**,
+`panel_extensive` **8,810,640 = 20,395 × 432** — all unchanged. The only moves:
+`cell_ok` cells with airborne data 516,035 → **516,016** (−19), minimum
+`airborne_min_mean` 0.00 → **0.61**, and cells below 50 mph implied speed or
+non-finite 162 → **143** (−19). Both deltas equal 19 exactly.
+
+**Action 4 (lost routes).** Recomputed from the raw sample: **13,989** passenger
+routes before the matched-nation filter, **13,678** after, **311** lost,
+**41,348.0** departures across 3,337 rows — matches the new
+`routes_lost_no_matched_carrier` row in `panel_filter_log.csv` and
+`desc_sample.csv`.
+
+**Action 5 (write-after-assert).** I ran three mutations myself on a redirected
+copy of the script (outputs pointed at a scratch dir; no project file touched).
+*Extensive-VERIFY mutation* (`expected_rows + 1`): exit **1**, scratch dir
+contains **only the log file** — no parquet, no CSV. *Structural-zero-guard
+mutation* (`reports_time = True`): exit **1** at 741,262 detected leak rows,
+**no artifact written**. *desc-TOTAL mutation* (`len(ok) + 1`): exit **1**,
+`desc_sample.csv` and `panel_filter_log.csv` correctly absent — but
+`panel_monthly.parquet` (13.8 MB), `panel_extensive.parquet` (5.4 MB) and
+`extensive_margin_churn.csv` were already on disk (see finding 3).
+
+**Action 6 (churn CSV).** `rounds/round-1-t100-panel/extensive_margin_churn.csv`,
+17 metric rows + `note` column marking it a construction caveat. Recomputed
+independently from `panel_extensive.parquet`: entry/exit flags reproduce
+bit-for-bit (83,612 entries, **80,260** exits, stored flags identical to mine),
+`n_exits_reentering_ever` **63,255** (**0.78813**), `≤3mo` **18,562**
+(**0.23127**), `≤12mo` **40,877** (**0.50931**), `entries_per_triple` mean
+**4.0996** / median 2 / p90 10 / max **88**, `share_triples_with_gt1_entry`
+**0.58838**, `active_months_per_triple` median **5.0** / p90 191 / max 432.
+Every one of the 17 values matches to full precision.
+
+**Action 7 (determinism, validators).** I re-ran an unmutated redirected copy of
+the script end to end (exit 0) and md5-compared: `panel_monthly.parquet`,
+`panel_extensive.parquet`, `desc_sample.csv`, `panel_filter_log.csv`,
+`extensive_margin_churn.csv` — **all five byte-identical** to the shipped
+artifacts. `python code/99_validate_outputs.py` → exit **0**, "24 CSVs scanned,
+0 FAIL, 0 WARN". `python code/98_check_trino_usage.py` → exit **0**.
+
+**Preserved from cycle 1 (re-confirmed, not re-litigated).** Structural-zero
+guard at cell level: of 457,018 non-US cells, 0 have a non-null
+`airborne_min_mean`, 0 a non-null `ramp_min_mean`, 0 an `available` flag True,
+0 `departures_time_eligible > 0`. VERIFY 1: `desc_sample.csv` TOTAL `n_cells`
+**517,076** == parquet `cell_ok` count **517,076** (checked from the CSV, not
+the assertion); all four decade rows reproduce exactly (1990: 89,473/1,639;
+2000: 147,289/2,470; 2010: 180,194/2,621; 2020: 100,120/2,531) and `n_nations
+== 1` in every row. VERIFY 2: `panel_extensive` = **8,810,640** rows = 20,395
+triples × 432 months, 0 duplicate keys, active rows **1,026,729** == panel_monthly
+rows. `covid_flag` covers exactly **22** months, 2020-03 … 2021-12, in both
+parquets. Filter-log chain still reconciles to the ingest total 2,662,470.
+Economic plausibility of the headline outcome: `cell_ok` airborne mean 276.4
+min, median 203.0, p1 33.4, p99 834.6, min 0.61, max 2,433; implied speed
+median 467.3 mph, p1 176.4, p99 589.2. Nothing artifactual.
+
+### Gate status
+
+- **G1** (no empty cells; keys) — PASS. No nulls in `(origin,dest,nation,year,
+  month)`, 0 duplicate keys, no empty cells in `panel_filter_log.csv` (13×7) or
+  `extensive_margin_churn.csv` (17×3); the 13/5 blank cells in `desc_sample.csv`
+  are the row_type-specific schema, not missing data.
+- **G2/G3/G4** — N/A (construction task; no coefficients, SEs or p-values are
+  produced anywhere in FIX-04).
+- **G5** — PASS. `fleet_share_top_type` ∈ [0.1741, 1.0], `share_dep_home0` ∈
+  [0.0, 1.0]; asserted in code and re-verified from the parquet.
+- **G6** — PASS, carried from FIX-03 by merge; 457,018 cells flagged
+  `coverage_ok == False`, logged, not dropped.
+- **G7** — PASS as constrained: matched tier only, icao/unmatched/refused/null
+  dropped with logged reasons; the DEGENERATE-GATE remains
+  BLOCKED-NEEDS-HUMAN at FIX-02 and no nation-level number is reported here.
+- **G8** — N/A (FIX-05).
+- **G9** — see finding 2: three numbers I directed into FINDINGS have no CSV
+  trace yet.
+- Round-file gate "every drop in `panel_filter_log.csv` has a reason" — PASS;
+  all 13 rows carry a non-empty `reason`, including the three new steps.
+
+### Findings
+
+1. **(Must fix before the FIX-04 commit; text only, cannot change a number.)
+   The new B2 diagnostic log line misattributes 99.6% of what it counts.**
+   `logs/04_build_panel.log` line 166: "*458769 cells … have
+   departures_non_reporting > 0 (16110805 departures total) -- these are mixed
+   cells whose departures_performed includes carriers mis-mapped to
+   nation=='US' (VX (1)/B0/WO …)*". I decomposed it: of the 458,769 cells,
+   **457,018 are non-US cells** where every carrier is structurally
+   non-reporting and `departures_non_reporting == departures_performed` by
+   construction; only **1,751** are US cells. Of the 16,110,805 departures,
+   **16,075,637** are foreign and only **35,168** come from the three
+   mis-mapped codes. The counts are right; the explanatory clause is false for
+   99.6% of the cells and 99.8% of the departures, and a director transcribing
+   it would report a 16-million-departure contamination that does not exist.
+   This is the same class of error as cycle-1's B1. Rewrite
+   `04_build_panel.py` lines 445–449 to split the two populations explicitly
+   (structural non-reporting in non-US cells vs the US-cell mis-mapping) and
+   re-run; the artifacts must stay byte-identical (verified above that they
+   will, the change is log text).
+2. **(Must fix before the FIX-04 commit.) G9: `1,681` / `35,051` / `588` exist
+   only in a log line, not in any round-folder CSV**, yet they are the numbers
+   my cycle-1 FINDINGS block directs the director to report. Add them as rows
+   to `panel_filter_log.csv` (e.g. `level=cell, action=flag, step=
+   mixed_cells_non_reporting`, with the departures and the
+   `cell_ok_precision`-survivor count), so the FINDINGS citation is a real
+   `(file.csv, row)` trace. Until that row exists the director may cite only
+   **35,168** departures, traceable as the sum of the `departures` column over
+   rows `VX (1)`, `B0`, `WO` of `carrier_nation_precision_audit.csv` (19,410 +
+   10,871 + 4,887).
+3. **(Must fix before the FIX-04 commit.) The stale cycle-1 text is still in a
+   file that will be committed.** `logs/` is not in `.gitignore`, and
+   `logs/04_build_panel.log` lines 12, 27, 55, 89 and 123 (runs 01:01–01:12)
+   still read "*e.g. VX/B0/ASQ-style codes*" — the exact false statement that
+   failed cycle 1. Truncate the log and re-run once (40 s; artifacts proven
+   byte-identical) so the committed log contains only the corrected run, or
+   the reader has to know which timestamps to ignore. Note in mitigation:
+   `code/build_run_log.py` reads only `rounds/round-*/**/*.csv`, so no log
+   text can reach `FINAL_RUN_LOG.md`.
+4. **(Advisory.) Action 5 is met in the letter, and the code comment
+   overclaims.** Lines 527–531 assert "*Every write in this script (both
+   parquets, desc_sample.csv, the churn CSV, panel_filter_log.csv) happens
+   only after ALL validations below … have passed, so a failed run leaves no
+   artifact on disk.*" My mutation D shows that is false: a failing
+   `desc_sample` TOTAL assertion (line 695) leaves both parquets and the churn
+   CSV (19.2 MB) on disk, because they are written at lines 618–676. The two
+   writes the required action named are correctly gated, and the desc
+   assertion is in practice tautological (`len(ok)` vs `panel["cell_ok"].sum()`),
+   so no number is at risk — but delete or weaken the comment rather than let
+   a later reader trust it. The property that matters I verified directly from
+   the artifacts, not from the assertion.
+5. **(Advisory, matters for FIX-05.) `departures_time_eligible` is *not* the
+   denominator of `airborne_min_mean` in 26 cells.** Action 3 correctly moved
+   the airborne denominator to the gap-excluded count, but the panel retains
+   the pre-gap `departures_time_eligible` and drops the internal
+   `dep_for_airtime`. The exact denominator is recoverable —
+   `air_time_total / airborne_min_mean` is integer-valued to 1.1e-13 and
+   differs from `departures_time_eligible` in exactly **26** of 516,016 cells —
+   so nothing is lost, but a departures-weighted mean of `airborne_min_mean`
+   weighted by `departures_time_eligible` is very slightly wrong. FIX-05 should
+   weight by `air_time_total / airborne_min_mean` (or, equivalently, aggregate
+   `air_time_total` and that denominator) and say so in `desc_outcomes.csv`.
+6. **(Advisory, for round close.) The void FIX-05 artifacts are still in the
+   round folder and the validator counts them.** `desc_outcomes.csv`,
+   `baseline_failures.csv`, `outcome_data_quality_exclusions.csv` and
+   `figures/fig_excess_distribution.png` (all mtime 01:17–01:18) predate the
+   rebuilt `panel_monthly.parquet` (01:36) and are part of the "24 CSVs
+   scanned" the validator reports green. They are void per the cycle-1
+   addendum. Regenerate or move them to `legacy_quarantine/` before round
+   close; a green validator over stale files is not evidence.
+7. **(Advisory, unchanged.) A3 stands and A10 is still open.** The churn CSV
+   now makes the seasonality caveat citable, and `code/04_panel/`,
+   `logs/04_build_panel.log` and the three CSVs remain untracked — commit them
+   with findings 1–3 applied.
+
+All seven cycle-1 required actions are met on their stated testables, every
+recomputation reproduces the shipped numbers exactly, and the three items in
+findings 1–3 are text/row-only corrections that provably cannot alter an
+analysed number.
+
+**VERDICT: PASS**
+
+### FIX-04 block for ROUND_01_FINDINGS.md (G9-traced; the director should carry
+this and nothing else from FIX-04)
+
+1. **The panel is built and the structural-zero guard holds.** 1,026,729
+   directed route × operator-nation × month cells; 517,076 pass `cell_ok`
+   (coverage_ok and ≥ 4 departures). *(panel_filter_log.csv, rows
+   `aggregate_to_cell` and `cell_ok_final`; desc_sample.csv, row TOTAL.)* The
+   457,018 cells whose nation fails FIX-03's coverage gate carry a null
+   airborne time, never a fabricated zero. *(panel_filter_log.csv, row
+   `coverage_ok_g6`.)* Verified by mutation test that the guard exits 1 rather
+   than shipping fabricated zero-minute foreign cells.
+2. **The headline sample is 100% US on the face of the output**: `n_nations ==
+   1` in all four decade rows and in TOTAL, across 4,133 routes and 36 years.
+   *(desc_sample.csv, `decade_summary` rows.)* This is FIX-03's blocker made
+   concrete, not a modelling choice.
+3. **Within-US reporting gaps are excluded, never imputed.** 60 detail rows /
+   483 departures report `AIR_TIME == 0` alongside positive departures and are
+   removed from both the numerator and the denominator of the airborne mean
+   (8 rows / 9 departures likewise for ramp time), so an all-gap cell is
+   missing rather than zero. *(panel_filter_log.csv, rows
+   `air_time_zero_gap_excluded` and `ramp_zero_gap_excluded`.)* No cell in the
+   panel now shows a zero-minute average flight.
+4. **Three foreign carriers are mislabelled as US by the carrier→nation
+   mapping** — `VX (1)` Aces Airlines (Colombia), `B0` La Compagnie (France),
+   `WO` Swoop (Canada), 35,168 departures between them, each with a
+   home-country departure share of 0.0. *(carrier_nation_precision_audit.csv,
+   rows `VX (1)`, `B0`, `WO`, columns `departures` and
+   `home_country_dep_share`.)* Report this as the G7 precision failure it is,
+   not as a US-carrier curiosity. The cell-level counts (mixed `cell_ok` cells
+   and their `cell_ok_precision` survivors) may be cited once finding 2 above
+   puts them in `panel_filter_log.csv`.
+5. **311 routes (41,348 departures) leave the panel** because every carrier
+   that ever served them was unmatched, icao-tier or null-coded, so they form
+   no nation triple. *(panel_filter_log.csv, row
+   `routes_lost_no_matched_carrier`.)*
+6. **The extensive margin is the round's surviving asset, but its entry/exit
+   flags are mostly seasonality, not market entry and exit.** 80,260 exits, of
+   which 78.8% are followed by a later re-entry on the same route-nation, 50.9%
+   within twelve months and 23.1% within three; 58.8% of the 20,395 route-nation
+   pairs have more than one entry (max 88) and the median pair is active in only
+   5 of 432 months. *(extensive_margin_churn.csv, rows `n_exits`,
+   `share_exits_reentering_ever`, `share_exits_reentering_within_12mo`,
+   `share_exits_reentering_within_3mo`, `share_triples_with_gt1_entry`,
+   `entries_per_triple_max`, `active_months_per_triple_median`.)* This is a
+   construction caveat, not a result — the CSV says so in its own `note`
+   column. Any exit event study needs a spell-based definition (exit requires k
+   consecutive inactive months) first.
+7. **G6/G7 embargo intact**: no nation-level number is reported out of FIX-04,
+   and `cell_ok_precision` is carried on the panel so a later task can take the
+   strict sample without recomputing it.
+8. Carried forward: FIX-01's write-before-assert pattern is now fixed for the
+   two artifacts that mattered but is not eliminated (review finding 4).
+
+### FIX-05 permission
+
+**FIX-05 MAY NOW PROCEED** on `data/interim/panel_monthly.parquet` as rebuilt
+at 2026-09-02 01:36 UTC. Findings 1–3 above are log-text and filter-log-row
+corrections that cannot change a panel value; FIX-05 does not read them and
+need not wait. Terms, restated and unchanged from the FIX-03 ruling:
+
+1. **All-US, and labelled as such.** The computation is explicitly "US
+   carriers' airborne time on US-touching international segments", never "the
+   carrier-nation wedge" or anything implying a foreign comparison. Every
+   `cell_ok` cell has `nation == 'US'`; assert it in code.
+2. **G8 asserted in code**, not merely described: no baseline median may use a
+   COVID-window month, every baseline must have ≥ 2 observations, and the count
+   of cells failing the ≥ 2 rule must be logged and written to a CSV.
+3. **The true monthly COVID window is 2020-03 … 2021-12** (22 months, PROJECT.md
+   line 74 / Part 0). Do not use the wider 2020-01 … 2022-01 *event* window from
+   PROJECT.md line 142 — that one belongs to NEW-06 (advisory A7).
+4. **Screen on implied ground speed, not on the sentinel value 9999.** `9999`
+   is not a sentinel in this source: 46 of the 47 raw rows carrying it are
+   ordinary monthly totals, and screening on the literal value would delete
+   good cells. Document the implied-speed screen in `desc_outcomes.csv`. For
+   calibration on the current panel: 143 `cell_ok` cells are below 50 mph or
+   non-finite and 80 exceed 1,000 minutes per departure (both recomputed
+   above; the counts fell from 162 and stayed at 80 after the B3 fix).
+   `distance == 0` on 2 `cell_ok` cells — never divide by it.
+5. **Weight by the airborne denominator, not `departures_time_eligible`**
+   (review finding 5): use `air_time_total / airborne_min_mean`, which differs
+   in 26 cells.
+6. **The previously-built FIX-05 artifacts are void and must be regenerated.**
+   `code/05_outcomes/` ran at 01:17–01:18 against the pre-fix panel, before
+   this verdict existed. `data/interim/panel_excess.parquet`,
+   `desc_outcomes.csv`, `baseline_failures.csv`,
+   `outcome_data_quality_exclusions.csv` and
+   `figures/fig_excess_distribution.png` must be rebuilt from the 01:36 panel;
+   no number in the existing versions may be cited, and they should be
+   quarantined rather than left to be counted green by the validator.

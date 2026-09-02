@@ -1,0 +1,16 @@
+level,action,step,n_before,n_after,n_dropped,reason
+row,drop,passenger_service_only,2662470,1819635,842835,"SERVICE_CLASS != F (combi/freighter/other); headline sample is scheduled passenger service only, per Part 0."
+row,drop,icao_tier_dropped,1819635,1819288,347,"icao match tier dropped by round-file override: measured ~49% home-country-zero on FIX-02's precision diagnostic, unusable (347 rows)."
+row,drop,unmatched_or_refused_carrier,1819288,1749671,69617,UNIQUE_CARRIER code unmatched to a nation or refused for suffix collision (G7 matched-carriers-only) (69617 rows).
+row,drop,null_carrier_code,1749671,1749156,515,UNIQUE_CARRIER itself null/unresolvable at the merge step (515 rows).
+route,drop,routes_lost_no_matched_carrier,13989,13678,311,"(origin, dest) routes present in the passenger-service sample where EVERY carrier ever serving them was unmatched/icao-tier/null-code at the matched-nation filter, so the route has zero matched-nation triples and is entirely absent from panel_extensive (311 routes, 41348 departures, all attributable to excluded carriers)."
+row,drop,departures_gt_0,1749156,1745101,4055,"DEPARTURES_PERFORMED == 0 rows (scheduled but not flown) dropped from the intensive panel; kept for the extensive margin only, per Part 0."
+row,exclude_from_time_agg,air_time_zero_gap_excluded,1745101,1745041,60,"CARRIER_GROUP-eligible rows with AIR_TIME==0 despite DEPARTURES_PERFORMED>0 (within-US reporting gap, Part 0 'never imputed') excluded from both the numerator and denominator of airborne_min_mean, NOT dropped from the panel row itself (60 rows, 483 departures)."
+row,exclude_from_time_agg,ramp_zero_gap_excluded,1745101,1745093,8,"CARRIER_GROUP-eligible rows with RAMP_TO_RAMP==0 despite DEPARTURES_PERFORMED>0 (within-US reporting gap) excluded from both the numerator and denominator of ramp_min_mean, NOT dropped from the panel row itself (8 rows, 9 departures)."
+cell,none,aggregate_to_cell,1026729,1026729,0,"Aggregation step, not a drop: every detail row is summed into exactly one cell (verified n_rows_raw sums to the input row count)."
+cell,flag,coverage_ok_g6,1026729,569711,457018,"nation x year coverage share (FIX-03 G6) < 0.50 -- flagged False, NOT dropped from panel_monthly (457018 cells)."
+cell,flag,min_cell_size_4,1026729,974094,52635,"< 4 departures in the month among coverage_ok cells -- flagged False in cell_ok, NOT dropped (52635 cells)."
+cell,flag,cell_ok_final,1026729,517076,509653,cell_ok = coverage_ok & departures>=4 (517076 cells pass).
+cell,flag,cell_ok_8_sensitivity,1026729,476207,550522,sensitivity: cell_ok_8 = coverage_ok & departures>=8 (476207 cells pass).
+cell,flag,cell_ok_mixed_mapping_precision,517076,515395,1681,"cell_ok cells whose departures_performed includes departures from carriers mis-mapped to nation=='US' by FIX-02 IATA-code collisions (VX (1)/B0/WO) that never contribute to the airborne/ramp numerator -- flagged via departures_non_reporting > 0, NOT dropped from panel_monthly (1681 cells, 35051 departures)."
+cell,flag,cell_ok_precision_mixed_mapping_residual,1681,1093,588,"of the 1681 cell_ok mixed-mapping cells above, 588 still survive cell_ok_precision (i.e. nation_precision_flag did not catch them; max mixed departures share 0.4918) -- residual G7 precision exposure not fully screened by the cell-level nation_precision_flag threshold."

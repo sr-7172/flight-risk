@@ -1,0 +1,54 @@
+[2026-09-02 01:17:22] 05_build_excess INFO: Loaded panel_monthly.parquet: 1026729 rows.
+[2026-09-02 01:17:22] 05_build_excess INFO: Governing-fact re-check holds: airborne_min_mean and coverage_ok are both empirically all-US in this panel (0 non-US exceptions). Every deliverable below is labelled 'US carriers' airborne time on US-touching international segments'.
+[2026-09-02 01:17:22] 05_build_excess INFO: Round-number sentinel scan ([999.0, 9999.0, 99999.0, 8888.0, 88888.0, -999.0, -1.0]): 2 value(s) found in the panel; see outcome_data_quality_exclusions.csv.
+[2026-09-02 01:17:22] 05_build_excess INFO: distance == 0 rows: 50 total, 2 with cell_ok == True (kept -- genuine very-short routes where BTS's whole-mile DISTANCE field rounds to 0; distance is a covariate here, not an outcome input).
+[2026-09-02 01:17:22] 05_build_excess INFO: Physically-implausible airborne time (> 1440 min = 24h; longest real nonstop passenger flight is ~18-19h): 15 rows total, 3 with cell_ok == True. Nulled out of every baseline/excess computation below.
+[2026-09-02 01:17:22] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/outcome_data_quality_exclusions.csv: 19 rows.
+[2026-09-02 01:17:22] 05_build_excess INFO: Valid measurement (cell_ok & airborne notna & not implausible): 516032 / 1026729 rows (0.5026).
+[2026-09-02 01:17:24] 05_build_excess INFO: G8 holds (asserted in code): no baseline_med uses a COVID-window candidate; every computed baseline_med has >= 2 observations.
+[2026-09-02 01:17:24] 05_build_excess INFO: Baseline failure (valid target cell, but baseline_n < 2): 122787 / 516032 valid cells (0.2379) -- reported as-is, not relaxed, in baseline_failures.csv.
+[2026-09-02 01:17:38] 05_build_excess INFO: Winsorized excess_min at [0.01, 0.99] within (origin, dest, nation): 11043 / 393245 non-null rows moved.
+[2026-09-02 01:17:38] 05_build_excess INFO: excess_z: 1635 rows had baseline_mad == 0 (set to NaN rather than +-inf); 391610 rows are non-null.
+[2026-09-02 01:17:38] 05_build_excess INFO: bidir_sum non-null (both directed legs present): 389540 / 1026729 rows (0.3794).
+[2026-09-02 01:17:38] 05_build_excess INFO: G1 pass: no null/duplicate cell keys.
+[2026-09-02 01:17:38] 05_build_excess INFO: Wrote /workspaces/flight-risk/data/interim/panel_excess.parquet: 1026729 rows.
+[2026-09-02 01:17:38] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/baseline_failures.csv: 36 nation x year rows.
+[2026-09-02 01:17:39] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/desc_outcomes.csv: 20 rows.
+[2026-09-02 01:17:39] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/figures/fig_excess_distribution.png.
+[2026-09-02 01:17:39] 05_build_excess INFO: DONE.
+[2026-09-02 01:17:50] 05_build_excess INFO: Loaded panel_monthly.parquet: 1026729 rows.
+[2026-09-02 01:17:50] 05_build_excess INFO: Governing-fact re-check holds: airborne_min_mean and coverage_ok are both empirically all-US in this panel (0 non-US exceptions). Every deliverable below is labelled 'US carriers' airborne time on US-touching international segments'.
+[2026-09-02 01:17:50] 05_build_excess INFO: Round-number sentinel scan ([999.0, 9999.0, 99999.0, 8888.0, 88888.0, -999.0, -1.0]): 2 value(s) found in the panel; see outcome_data_quality_exclusions.csv.
+[2026-09-02 01:17:50] 05_build_excess INFO: distance == 0 rows: 50 total, 2 with cell_ok == True (kept -- genuine very-short routes where BTS's whole-mile DISTANCE field rounds to 0; distance is a covariate here, not an outcome input).
+[2026-09-02 01:17:50] 05_build_excess INFO: Physically-implausible airborne time (> 1440 min = 24h; longest real nonstop passenger flight is ~18-19h): 15 rows total, 3 with cell_ok == True. Nulled out of every baseline/excess computation below.
+[2026-09-02 01:17:50] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/outcome_data_quality_exclusions.csv: 19 rows.
+[2026-09-02 01:17:50] 05_build_excess INFO: Valid measurement (cell_ok & airborne notna & not implausible): 516032 / 1026729 rows (0.5026).
+[2026-09-02 01:17:52] 05_build_excess INFO: G8 holds (asserted in code): no baseline_med uses a COVID-window candidate; every computed baseline_med has >= 2 observations.
+[2026-09-02 01:17:52] 05_build_excess INFO: Baseline failure (valid target cell, but baseline_n < 2): 122787 / 516032 valid cells (0.2379) -- reported as-is, not relaxed, in baseline_failures.csv.
+[2026-09-02 01:18:06] 05_build_excess INFO: Winsorized excess_min at [0.01, 0.99] within (origin, dest, nation): 11043 / 393245 non-null rows moved.
+[2026-09-02 01:18:06] 05_build_excess INFO: excess_z: 1635 rows had baseline_mad == 0 (set to NaN rather than +-inf); 391610 rows are non-null.
+[2026-09-02 01:18:06] 05_build_excess INFO: bidir_sum non-null (both directed legs present): 389540 / 1026729 rows (0.3794).
+[2026-09-02 01:18:06] 05_build_excess INFO: G1 pass: no null/duplicate cell keys.
+[2026-09-02 01:18:07] 05_build_excess INFO: Wrote /workspaces/flight-risk/data/interim/panel_excess.parquet: 1026729 rows.
+[2026-09-02 01:18:07] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/baseline_failures.csv: 36 nation x year rows.
+[2026-09-02 01:18:07] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/desc_outcomes.csv: 20 rows.
+[2026-09-02 01:18:07] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/figures/fig_excess_distribution.png.
+[2026-09-02 01:18:07] 05_build_excess INFO: DONE.
+[2026-09-02 01:59:39] 05_build_excess INFO: Loaded panel_monthly.parquet: 1026729 rows.
+[2026-09-02 01:59:39] 05_build_excess INFO: Governing-fact re-check holds: airborne_min_mean and coverage_ok are both empirically all-US in this panel (0 non-US exceptions). Every deliverable below is labelled 'US carriers' airborne time on US-touching international segments'.
+[2026-09-02 01:59:39] 05_build_excess INFO: Implied-speed screen (< 50 mph = distance / airborne hours; no scheduled passenger aircraft cruises this slow): 328 rows total, 141 with cell_ok == True. Nulled out of every baseline/excess computation below.
+[2026-09-02 01:59:39] 05_build_excess INFO: distance == 0 rows: 50 total, 2 with cell_ok == True (kept, carved out of the implied-speed test explicitly -- genuine very-short routes where BTS's whole-mile DISTANCE field rounds to 0; distance is a covariate here, not an outcome input).
+[2026-09-02 01:59:39] 05_build_excess INFO: Diagnostic only (NOT an exclusion criterion): airborne_min_mean > 1000 min/departure: 116 rows total, 80 with cell_ok == True (worst cases overlap with the implied-speed exclusion above, e.g. NSB<->FLL).
+[2026-09-02 01:59:39] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/outcome_data_quality_exclusions.csv: 410 rows.
+[2026-09-02 01:59:39] 05_build_excess INFO: Valid measurement (cell_ok & airborne notna & implied speed >= 50 mph or distance == 0): 515875 / 1026729 rows (0.5024).
+[2026-09-02 01:59:41] 05_build_excess INFO: G8 holds (asserted in code): no baseline_med uses a COVID-window candidate; every computed baseline_med has >= 2 observations.
+[2026-09-02 01:59:41] 05_build_excess INFO: Baseline failure (valid target cell, but baseline_n < 2): 122727 / 515875 valid cells (0.2379) -- reported as-is, not relaxed, in baseline_failures.csv.
+[2026-09-02 01:59:56] 05_build_excess INFO: Winsorized excess_min at [0.01, 0.99] within (origin, dest, nation): 11040 / 393148 non-null rows moved.
+[2026-09-02 01:59:56] 05_build_excess INFO: excess_z: 1629 rows had baseline_mad == 0 (set to NaN rather than +-inf); 391519 rows are non-null.
+[2026-09-02 01:59:56] 05_build_excess INFO: bidir_sum non-null (both directed legs present): 389446 / 1026729 rows (0.3793).
+[2026-09-02 01:59:56] 05_build_excess INFO: G1 pass: no null/duplicate cell keys.
+[2026-09-02 01:59:56] 05_build_excess INFO: Wrote /workspaces/flight-risk/data/interim/panel_excess.parquet: 1026729 rows.
+[2026-09-02 01:59:56] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/baseline_failures.csv: 36 nation x year rows.
+[2026-09-02 01:59:57] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/desc_outcomes.csv: 20 rows.
+[2026-09-02 01:59:57] 05_build_excess INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/figures/fig_excess_distribution.png.
+[2026-09-02 01:59:57] 05_build_excess INFO: DONE.

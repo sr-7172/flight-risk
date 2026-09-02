@@ -1,0 +1,80 @@
+[2026-09-02 01:57:08] 04_build_panel INFO: Loaded t100_raw.parquet: 2662470 rows.
+[2026-09-02 01:57:08] 04_build_panel INFO: Loaded carrier_nation.parquet: 8842 (UNIQUE_CARRIER, year) rows.
+[2026-09-02 01:57:08] 04_build_panel INFO: Loaded coverage_audit.csv (2249 nation x year rows) and carrier_nation_precision_audit.csv (290 codes).
+[2026-09-02 01:57:08] 04_build_panel INFO: Filter passenger service: 2662470 -> 1819635 rows.
+[2026-09-02 01:57:08] 04_build_panel INFO: merge on=(UNIQUE_CARRIER, YEAR) how=left | left=1819635 right=8842 -> merged=1819635
+[2026-09-02 01:57:08] 04_build_panel INFO:   _merge both: 1819120 (100.0%)
+[2026-09-02 01:57:08] 04_build_panel INFO:   _merge left_only: 515 (0.0%)
+[2026-09-02 01:57:08] 04_build_panel INFO:   _merge right_only: 0 (0.0%)
+[2026-09-02 01:57:08] 04_build_panel INFO:   match rate (both/merged): 1.000
+[2026-09-02 01:57:08] 04_build_panel INFO: Matched-nation sample (icao/unmatched/refused/null dropped): 1749156 / 1819635 rows (0.9613 of passenger rows).
+[2026-09-02 01:57:08] 04_build_panel INFO: Structural-zero guard holds on the matched sample: 0 rows with a time-reporting CARRIER_GROUP mapped to a non-US nation.
+[2026-09-02 01:57:08] 04_build_panel INFO: Within nation=='US' cells, 1771 rows carry a non-time-reporting CARRIER_GROUP and are excluded from the airborne/ramp denominator (but retained in departures_performed): codes ['B0', 'VX (1)', 'WO'] -- these are FOREIGN carriers mis-mapped to nation=='US' by FIX-02 IATA-code collisions (VX (1)=Aces Airlines/Colombia, B0=Dreamjet SAS Dba La Compagnie/France, WO=SWOOP Inc./Canada; all three have home_country_dep_share==0.0 in carrier_nation_precision_audit.csv), not US carriers filing on the foreign schedule.
+[2026-09-02 01:57:08] 04_build_panel INFO: Extensive-margin population (passenger, matched-nation, departures >= 0 i.e. unfiltered on the intensive DEPARTURES_PERFORMED>0 step): 1749156 rows.
+[2026-09-02 01:57:08] 04_build_panel INFO: B4: 311 / 13989 passenger-service (origin, dest) routes have no matched-nation carrier at all and are absent from panel_extensive (41348 departures).
+[2026-09-02 01:57:08] 04_build_panel INFO: Filter departures>0 (intensive panel only): 1749156 -> 1745101 rows.
+[2026-09-02 01:57:08] 04_build_panel INFO: Within-US reporting gaps: 60 rows / 483 departures excluded from the airborne mean (AIR_TIME==0), 8 rows / 9 departures excluded from the ramp mean (RAMP_TO_RAMP==0).
+[2026-09-02 01:57:08] 04_build_panel INFO: Aggregating 1745101 detail rows (carrier x aircraft-type x segment x month, no dedup) into cells on ['ORIGIN', 'DEST', 'nation', 'YEAR', 'MONTH'] ...
+[2026-09-02 01:57:09] 04_build_panel INFO: Aggregated to 1026729 (origin, dest, nation, year, month) cells (1745101 detail rows in, 1745101 out via n_rows_raw sum check).
+[2026-09-02 01:57:09] 04_build_panel INFO: STRUCTURAL-ZERO GUARD holds: all 457018 non-US-nation cells have null airborne_min_mean/ramp_min_mean, airborne_available/ramp_available == False, and departures_time_eligible == 0.
+[2026-09-02 01:57:09] 04_build_panel INFO: US-nation cells: 569711 total, 568568 with airborne_available == True (0.9980).
+[2026-09-02 01:57:09] 04_build_panel INFO: B2 diagnostic, non-US-nation cells (ordinary structural non-reporting, FIX-03 fact -- NOT a FIX-02 mapping issue): 457018 cells / 16075637 departures, all of it (every non-US cell has departures_time_eligible == 0 by construction).
+[2026-09-02 01:57:09] 04_build_panel INFO: B2 diagnostic, nation=='US' mixed cells (the actual G7 precision issue -- departures from VX (1)/Aces Airlines/Colombia, B0/La Compagnie/France, or WO/SWOOP/Canada landing in a nation=='US' cell without contributing to the airborne/ramp numerator): 1751 cells / 35168 departures.
+[2026-09-02 01:57:09] 04_build_panel INFO: cell_ok (coverage_ok & departures>=4): 517076 / 1026729 cells (0.5036).
+[2026-09-02 01:57:09] 04_build_panel INFO: cell_ok_8 (coverage_ok & departures>=8): 476207 / 1026729 cells (0.4638).
+[2026-09-02 01:57:09] 04_build_panel INFO: cell_ok_precision (cell_ok & ~nation_precision_flag): 515983 / 1026729 cells (0.5026).
+[2026-09-02 01:57:09] 04_build_panel INFO: B2 testable: 1681 cell_ok cells have departures_non_reporting > 0 (35051 departures); 588 of those still survive cell_ok_precision (max mixed share 0.4918).
+[2026-09-02 01:57:09] 04_build_panel INFO: G5 pass: ['fleet_share_top_type', 'share_dep_home0'] all within [0,1].
+[2026-09-02 01:57:09] 04_build_panel INFO: G1 pass: no null cell keys, no duplicate cell keys (1026729 unique cells).
+[2026-09-02 01:57:10] 04_build_panel INFO: Extensive margin: 20395 distinct (origin, dest, nation) triples ever observed x 432 months (1990-01..2025-12) = 8810640 expected rows.
+[2026-09-02 01:57:10] 04_build_panel INFO: Built full grid: 8810640 rows.
+[2026-09-02 01:57:11] 04_build_panel INFO: merge on=(origin,dest,nation,year,month) how=left | left=8810640 right=1027372 -> merged=8810640
+[2026-09-02 01:57:11] 04_build_panel INFO: VERIFY: panel_extensive row count matches 20395 triples x 432 months exactly.
+[2026-09-02 01:57:17] 04_build_panel INFO: Extensive margin flags: 83612 entry events, 80260 exit events across 20395 triples.
+[2026-09-02 01:57:17] 04_build_panel INFO: Wrote /workspaces/flight-risk/data/interim/panel_monthly.parquet: 1026729 rows.
+[2026-09-02 01:57:18] 04_build_panel INFO: Wrote /workspaces/flight-risk/data/interim/panel_extensive.parquet: 8810640 rows.
+[2026-09-02 01:57:19] 04_build_panel INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/extensive_margin_churn.csv: 17 metric rows. n_exits=80260, reenter_ever=63255 (0.7881), reenter<=3mo=18562 (0.2313), reenter<=12mo=40877 (0.5093), median active months/triple=5.0.
+[2026-09-02 01:57:19] 04_build_panel INFO: VERIFY: desc_sample.csv TOTAL n_cells (517076) == panel_monthly cell_ok==True row count (517076).
+[2026-09-02 01:57:19] 04_build_panel INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/desc_sample.csv: 20 rows (5 decade_summary incl. TOTAL, 15 filter_drop).
+[2026-09-02 01:57:19] 04_build_panel INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/panel_filter_log.csv: 15 filter-step rows.
+[2026-09-02 01:57:19] 04_build_panel INFO: 04_build_panel DONE. panel_monthly: 1026729 cells (517076 cell_ok, 476207 cell_ok_8, 515983 cell_ok_precision). panel_extensive: 8810640 rows (20395 triples x 432 months).
+[2026-09-02 01:57:49] 04_build_panel INFO: Loaded t100_raw.parquet: 2662470 rows.
+[2026-09-02 01:57:49] 04_build_panel INFO: Loaded carrier_nation.parquet: 8842 (UNIQUE_CARRIER, year) rows.
+[2026-09-02 01:57:49] 04_build_panel INFO: Loaded coverage_audit.csv (2249 nation x year rows) and carrier_nation_precision_audit.csv (290 codes).
+[2026-09-02 01:57:49] 04_build_panel INFO: Filter passenger service: 2662470 -> 1819635 rows.
+[2026-09-02 01:57:50] 04_build_panel INFO: merge on=(UNIQUE_CARRIER, YEAR) how=left | left=1819635 right=8842 -> merged=1819635
+[2026-09-02 01:57:50] 04_build_panel INFO:   _merge both: 1819120 (100.0%)
+[2026-09-02 01:57:50] 04_build_panel INFO:   _merge left_only: 515 (0.0%)
+[2026-09-02 01:57:50] 04_build_panel INFO:   _merge right_only: 0 (0.0%)
+[2026-09-02 01:57:50] 04_build_panel INFO:   match rate (both/merged): 1.000
+[2026-09-02 01:57:50] 04_build_panel INFO: Matched-nation sample (icao/unmatched/refused/null dropped): 1749156 / 1819635 rows (0.9613 of passenger rows).
+[2026-09-02 01:57:50] 04_build_panel INFO: Structural-zero guard holds on the matched sample: 0 rows with a time-reporting CARRIER_GROUP mapped to a non-US nation.
+[2026-09-02 01:57:50] 04_build_panel INFO: Within nation=='US' cells, 1771 rows carry a non-time-reporting CARRIER_GROUP and are excluded from the airborne/ramp denominator (but retained in departures_performed): codes ['B0', 'VX (1)', 'WO'] -- these are FOREIGN carriers mis-mapped to nation=='US' by FIX-02 IATA-code collisions (VX (1)=Aces Airlines/Colombia, B0=Dreamjet SAS Dba La Compagnie/France, WO=SWOOP Inc./Canada; all three have home_country_dep_share==0.0 in carrier_nation_precision_audit.csv), not US carriers filing on the foreign schedule.
+[2026-09-02 01:57:50] 04_build_panel INFO: Extensive-margin population (passenger, matched-nation, departures >= 0 i.e. unfiltered on the intensive DEPARTURES_PERFORMED>0 step): 1749156 rows.
+[2026-09-02 01:57:50] 04_build_panel INFO: B4: 311 / 13989 passenger-service (origin, dest) routes have no matched-nation carrier at all and are absent from panel_extensive (41348 departures).
+[2026-09-02 01:57:50] 04_build_panel INFO: Filter departures>0 (intensive panel only): 1749156 -> 1745101 rows.
+[2026-09-02 01:57:50] 04_build_panel INFO: Within-US reporting gaps: 60 rows / 483 departures excluded from the airborne mean (AIR_TIME==0), 8 rows / 9 departures excluded from the ramp mean (RAMP_TO_RAMP==0).
+[2026-09-02 01:57:50] 04_build_panel INFO: Aggregating 1745101 detail rows (carrier x aircraft-type x segment x month, no dedup) into cells on ['ORIGIN', 'DEST', 'nation', 'YEAR', 'MONTH'] ...
+[2026-09-02 01:57:51] 04_build_panel INFO: Aggregated to 1026729 (origin, dest, nation, year, month) cells (1745101 detail rows in, 1745101 out via n_rows_raw sum check).
+[2026-09-02 01:57:51] 04_build_panel INFO: STRUCTURAL-ZERO GUARD holds: all 457018 non-US-nation cells have null airborne_min_mean/ramp_min_mean, airborne_available/ramp_available == False, and departures_time_eligible == 0.
+[2026-09-02 01:57:51] 04_build_panel INFO: US-nation cells: 569711 total, 568568 with airborne_available == True (0.9980).
+[2026-09-02 01:57:51] 04_build_panel INFO: B2 diagnostic, non-US-nation cells (ordinary structural non-reporting, FIX-03 fact -- NOT a FIX-02 mapping issue): 457018 cells / 16075637 departures, all of it (every non-US cell has departures_time_eligible == 0 by construction).
+[2026-09-02 01:57:51] 04_build_panel INFO: B2 diagnostic, nation=='US' mixed cells (the actual G7 precision issue -- departures from VX (1)/Aces Airlines/Colombia, B0/La Compagnie/France, or WO/SWOOP/Canada landing in a nation=='US' cell without contributing to the airborne/ramp numerator): 1751 cells / 35168 departures.
+[2026-09-02 01:57:51] 04_build_panel INFO: cell_ok (coverage_ok & departures>=4): 517076 / 1026729 cells (0.5036).
+[2026-09-02 01:57:51] 04_build_panel INFO: cell_ok_8 (coverage_ok & departures>=8): 476207 / 1026729 cells (0.4638).
+[2026-09-02 01:57:51] 04_build_panel INFO: cell_ok_precision (cell_ok & ~nation_precision_flag): 515983 / 1026729 cells (0.5026).
+[2026-09-02 01:57:51] 04_build_panel INFO: B2 testable: 1681 cell_ok cells have departures_non_reporting > 0 (35051 departures); 588 of those still survive cell_ok_precision (max mixed share 0.4918).
+[2026-09-02 01:57:51] 04_build_panel INFO: G5 pass: ['fleet_share_top_type', 'share_dep_home0'] all within [0,1].
+[2026-09-02 01:57:51] 04_build_panel INFO: G1 pass: no null cell keys, no duplicate cell keys (1026729 unique cells).
+[2026-09-02 01:57:52] 04_build_panel INFO: Extensive margin: 20395 distinct (origin, dest, nation) triples ever observed x 432 months (1990-01..2025-12) = 8810640 expected rows.
+[2026-09-02 01:57:52] 04_build_panel INFO: Built full grid: 8810640 rows.
+[2026-09-02 01:57:53] 04_build_panel INFO: merge on=(origin,dest,nation,year,month) how=left | left=8810640 right=1027372 -> merged=8810640
+[2026-09-02 01:57:53] 04_build_panel INFO: VERIFY: panel_extensive row count matches 20395 triples x 432 months exactly.
+[2026-09-02 01:57:59] 04_build_panel INFO: Extensive margin flags: 83612 entry events, 80260 exit events across 20395 triples.
+[2026-09-02 01:57:59] 04_build_panel INFO: Wrote /workspaces/flight-risk/data/interim/panel_monthly.parquet: 1026729 rows.
+[2026-09-02 01:58:00] 04_build_panel INFO: Wrote /workspaces/flight-risk/data/interim/panel_extensive.parquet: 8810640 rows.
+[2026-09-02 01:58:01] 04_build_panel INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/extensive_margin_churn.csv: 17 metric rows. n_exits=80260, reenter_ever=63255 (0.7881), reenter<=3mo=18562 (0.2313), reenter<=12mo=40877 (0.5093), median active months/triple=5.0.
+[2026-09-02 01:58:01] 04_build_panel INFO: VERIFY: desc_sample.csv TOTAL n_cells (517076) == panel_monthly cell_ok==True row count (517076).
+[2026-09-02 01:58:01] 04_build_panel INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/desc_sample.csv: 20 rows (5 decade_summary incl. TOTAL, 15 filter_drop).
+[2026-09-02 01:58:01] 04_build_panel INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/panel_filter_log.csv: 15 filter-step rows.
+[2026-09-02 01:58:01] 04_build_panel INFO: 04_build_panel DONE. panel_monthly: 1026729 cells (517076 cell_ok, 476207 cell_ok_8, 515983 cell_ok_precision). panel_extensive: 8810640 rows (20395 triples x 432 months).
