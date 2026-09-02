@@ -755,7 +755,8 @@ def main() -> int:
     # labelled "not a cross-national comparison".
     # =====================================================================
     def _plot_us_only_panel(value_col: str, ylabel: str, out_path: Path,
-                             subtitle: str, shade_excess_blackout: bool) -> None:
+                             subtitle: str, shade_excess_blackout: bool,
+                             show_zero_line: bool = True) -> None:
         fig, axes = plt.subplots(2, 2, figsize=(16, 10), sharex=True)
         for ax, corridor in zip(axes.flat, corridor_order):
             us = family.loc[(family["corridor"] == corridor)
@@ -764,7 +765,18 @@ def main() -> int:
             x = np.arange(len(us))
             y = us[value_col].to_numpy()
             ax.plot(x, y, color="#4c72b0", linewidth=1.5, marker="o", markersize=2.5)
-            ax.axhline(0, color="black", linewidth=0.8, linestyle=":")
+            if show_zero_line:
+                ax.axhline(0, color="black", linewidth=0.8, linestyle=":")
+            else:
+                # Raw airborne minutes are always positive and far from 0; forcing
+                # the axis to include a 0 baseline squeezes a 470-920 minute series
+                # into the top ~15% of the panel. Autoscale to the data's own range
+                # (with a little padding) instead -- 0 is not a meaningful reference
+                # line for this outcome the way it is for excess_min_w.
+                finite_y = y[np.isfinite(y)]
+                if finite_y.size:
+                    pad = 0.08 * (finite_y.max() - finite_y.min() or 1.0)
+                    ax.set_ylim(finite_y.min() - pad, finite_y.max() + pad)
             if shade_excess_blackout:
                 for lo, hi in BLACKOUT_BLOCKS:
                     j_lo = full_ym.index(lo) if lo in full_ym else None
@@ -795,16 +807,28 @@ def main() -> int:
         plt.close(fig)
         logger.info("Wrote %s.", out_path)
 
+    # Blackout-block wording derived from BLACKOUT_BLOCKS itself (never hard-coded),
+    # so the caption cannot drift from FIX-05's own two-block finding the way the
+    # cycle-2 caption did (it had collapsed to a single 2022-03..2023-12 span).
+    def _fmt_ym(ym: tuple[int, int]) -> str:
+        return f"{ym[0]}-{ym[1]:02d}"
+
+    blackout_desc = " and ".join(f"{_fmt_ym(lo)}..{_fmt_ym(hi)}" for lo, hi in BLACKOUT_BLOCKS)
+    computable_desc = " and ".join(f"{lo[0]}-01/02" for lo, hi in BLACKOUT_BLOCKS if lo[1] == 3)
+
     _plot_us_only_panel(
         value_col="airborne_min_mean_wtd",
         ylabel="airborne_min_mean (minutes)",
         out_path=FIG_US_ONLY_AIRBORNE,
         subtitle=(f"{SAMPLE_LABEL}, departures-weighted mean airborne_min_mean (raw level, "
                    "not excess) by corridor, 2019-2024. This raw-level series is observed "
-                   "through the 2022-03..2023-12 event window where the excess-level series "
-                   "(below) is blacked out by FIX-05's baseline construction. "
+                   f"through both of the excess-level series' (below) baseline-blackout "
+                   f"blocks, {blackout_desc}, per FIX-05's baseline construction -- unlike "
+                   f"{computable_desc}, which are computable in both series (trailing-3-year "
+                   "baseline lag reaches just outside the COVID window there). "
                    "Shaded: COVID window (gray)."),
         shade_excess_blackout=False,
+        show_zero_line=False,
     )
     _plot_us_only_panel(
         value_col="excess_min_w_wtd",
@@ -812,7 +836,7 @@ def main() -> int:
         out_path=FIG_US_ONLY_EXCESS,
         subtitle=(f"{SAMPLE_LABEL}, departures-weighted mean excess_min_w by corridor, "
                    "2019-2024. Shaded: COVID window (gray) and the two excess-baseline "
-                   "blackout blocks (red, 2022-03..2022-12 and 2023-03..2023-12)."),
+                   f"blackout blocks (red, {blackout_desc})."),
         shade_excess_blackout=True,
     )
 

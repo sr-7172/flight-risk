@@ -4175,3 +4175,529 @@ columns and both new figures reproduce exactly from the parquets; determinism
 re-established from an empty root; both checkers exit 0; the wedge-figure
 prohibition still holds in substance. NEW-06 remains a documented null and is
 never a headline.
+
+---
+
+## ROUND 01 CLOSE — findings audit + OVERALL — 2026-09-02 06:05 UTC
+
+Scope: the director's round-close documents (`ROUND_01_FINDINGS.md`,
+`human-readable/PROJECT_STATE.md`, `RESEARCH_LOG.md`, `DECISIONS.md`,
+`MIN_SCRIPTS.md`, `FINAL_RUN_LOG.md`), the round's 29 CSVs and 5 figures, and the
+git history 8694d59…14dfeb3. Per-task verdicts are not re-litigated. No analysis
+code, CSV or director document was modified by me.
+
+### Per-task verdicts (from this file, unchanged)
+
+FIX-00 PASS (21:08) · FIX-01 PASS cycle 2 (21:36) · **FIX-02 BLOCKED-NEEDS-HUMAN,
+DEGENERATE-GATE, cycle 3 of 3 (no cycle-3 review section exists; STATUS 22:40
+records the terminal state, which is correct under rule 7)** · FIX-03 PASS cycle 2
+(00:51) · FIX-04 PASS cycle 2 (01:55) · FIX-05 PASS cycle 2 (02:43) · NEW-06 PASS
+cycle 2 (05:35). All seven tasks terminal.
+
+### Close checks re-run by me
+
+- `python code/99_validate_outputs.py` → "29 CSVs scanned, 0 FAIL, 0 WARN", **exit 0**.
+- `python code/98_check_trino_usage.py` → "0 FAIL", **exit 0**. No OpenSky pull this
+  round (round file: "touches NO OpenSky data"), so T1–T9 are vacuously satisfied
+  and `logs/opensky_queries.log` is correctly absent.
+- All 29 result CSVs are inside `rounds/round-1-t100-panel/`; `find` over the repo
+  outside `data/` and `rounds/` returns **zero** stray result CSVs.
+- `FINAL_RUN_LOG.md` header present ("generated 2026-09-02 05:36:03 — git 14dfeb3"),
+  mtime 05:36:03 > newest round CSV 05:23:39. Generated, not hand-edited.
+- `MIN_SCRIPTS.md` header "generated 2026-09-02 05:45:50 by code/sync_min_scripts.py",
+  this round; its 8-script minimal set equals the 8 analysis scripts in git.
+- `human-readable/PRESENTATION.md` untouched (mtime 2026-09-01 01:30, clean in
+  `git status`). PROJECT_STATE.md refreshed 05:44:36.
+- Pathology sweep over **all 29 CSVs, file by file, not a manifest**: no `coef`/`se`/
+  `pval` column exists anywhere in the round (no inference was run — consistent with
+  the round file, which commissions only construction and raw means), so G2/G3/G4
+  are N/A rather than passed-by-assertion; every `*share*`/`*rate*`/`*precision*`
+  column in every file lies in [0,1] (0 violations); no exploded magnitudes; no
+  empty cells in any cited column.
+
+### Findings audit — item 1: every number traced (the substance)
+
+I re-derived every numeric claim in `ROUND_01_FINDINGS.md` (≈90 figures) and in
+`PROJECT_STATE.md` from the cited CSV at the cited row. **Zero transcription errors,
+zero mis-traced citations, zero numbers drawn from prose.** Selected recomputations:
+
+- Headline: `coverage_by_carrier_group.csv`, 36 rows `carrier_group==0` →
+  n_rows 1,133,545; n_air_gt0 **0**; n_ramp_gt0 **0**; n_air_null **0**;
+  n_ramp_null **0**; n_air_zero 1,133,545 and n_ramp_zero 1,133,545 (literal zeros,
+  as claimed). `coverage_column_availability.csv`: foreign share_gt0 = 1.000000 dep,
+  1.000000 distance, 0.840383 seats, 0.835525 pax, 0.000000 air/ramp/depsched;
+  `(us, AIR_TIME)` 1,523,392/1,528,925 = 0.996381. All match the prose to the digit.
+- **Independent re-derivation from `data/raw/` (not from any project artifact):** I
+  re-read five raw year files (1995, 2008, 2019, 2022, 2025) and counted
+  `CARRIER_GROUP==0` rows with `AIR_TIME>0`: 27,150/0, 27,956/0, 41,958/0, 42,821/0,
+  50,399/0, zero nulls — row counts identical to the CSV's per-year values. The
+  headline reproduces from the vendor files.
+- G6: `coverage_audit.csv` 2,249 cells, 2,213 fail (max failing share exactly 0.0),
+  36 pass, all `nation=='US'`, range 0.992300–1.0; dep-weighted failing share
+  0.397647; `coverage_excluded_cells.csv` is a perfect two-way match to the failing
+  set (0 fail-but-unlisted, 0 pass-but-listed). `coverage_by_corridor.csv`: 908
+  non-US cells, **0** pass, and 0 pass within each of the four corridors separately
+  (337/425/20/126) — the "identically on treated and placebo" claim is not vacuous.
+- G7 split: `carrier_nation_matchrate.csv` foreign 0.902110 / 0.863077 / 0.843978;
+  overall 0.959201; `foreign_classF` 0.930256 / 0.891128. Sensitivity:
+  margin 41,643.3 dep; icao tier 47,345 dep at share_home0_dep 0.493759; excl-icao
+  foreign coverage 0.899711. KV→RU 222,939 (0.0), RV→IR 191,266 (0.0), TA→CR 347,572
+  (0.003783), VX(1)+B0+WO→US 19,410+10,871+4,887 = 35,168 (all 0.0), N0/Z0→AR
+  7,272/5,630, WPT→CA 2. Unmatched 244 codes / 1,931,914 dep; AV 254,450; OZ 204,972
+  (22,793 class-F). ICN 0.675340 / 0.657241; TPE 0.956194; other 20 anchors ≥0.999541.
+- Name-churn null: flips file gives 146+23+4 = **173 eras across 67+11+2 = 80 codes**,
+  4 cross-border rows on exactly 2 codes (AI, K8), both `resolution` = "unresolved …
+  needs human review"; 22 suffix refusals; refused class-F departures 178,674.
+- Panel/outcomes: 1,026,729 cells, 517,076 `cell_ok`, 457,018 G6-flagged, 1,681
+  mixed-mapping cells, 311 routes / 41,348 dep lost, 60 rows / 483 dep and 8 rows /
+  9 dep gap-excluded, 4,133 routes, `n_nations==1` in all four decade rows.
+  `desc_outcomes.csv` `excess_min_w`/`all`: n 393,148, p50 0.011486, mean 0.034744,
+  sd 8.196160; `bidir_sum` n 389,446, mean 0.069697, sd 12.603801.
+- Blackouts: `baseline_failures.csv` month rows — `n_excess_computed == 0` on all 20
+  rows 2022-03…2022-12 and 2023-03…2023-12; survivors 1,156 / 1,162 / 1,169 / 1,170;
+  2024 15,712, 2025 17,253; 1990–91 fail share 1.0; year rows sum to 122,727 of
+  515,875 (23.79%). **Re-derived independently from `data/interim/panel_excess.parquet`:
+  identical monthly counts.**
+- Speed screen: naive 150 mph removes 1,171 of 393,148 (0.298%), mean 0.034744 →
+  0.014407, sum 13,659.57 → 5,647.26 (removed 8,012.31 = 58.66%); full recompute at
+  150 mph mean 0.020870; 117 cells >700 mph on the full-recompute row (48 on the
+  naive rows — the findings correctly cite the 117 row).
+- Guards, verified by me on the parquet, not from the log: cells with
+  `coverage_ok == False` **and** non-null `airborne_min_mean` = **0**; rows with
+  `baseline_n < 2` and non-null `excess_min` = **0**; three randomly drawn cells'
+  `baseline_med` recomputed from `panel_monthly` logic (LHR→BOS 1993-12 425.555556;
+  YEG→PHX 2009-03 173.419355; DFW→GRU 2014-07 577.660377) match the shipped values
+  and their excesses exactly.
+- NEW-06: 5,824 rows = 8/8 corridor×window cells present; airborne non-null 358 and
+  excess non-null 226, **all `nation=='US'`**; 5,460 non-US rows with 0 non-null
+  outcomes of any kind; `reason_missing` 3,780 / 1,685 / 226 / 120 / 12 / 1 (sums to
+  5,824); diffs 364 rows, `diff_banned_minus_not_banned` null in 364/364 including
+  all 91 placebo rows; US level 72/72, 72/72, 71/72, 67/72; nations 23/30/9/2.
+  No `fig_raw_wedge_*` figure exists and the script asserts their absence (line 820).
+
+Trace-quality deviations (values all correct; the citation is the defect):
+(i) `PROJECT_STATE.md` cites every number with a **file name but no row/spec** —
+G9 and rule 5 require `(file.csv, row/spec)`. (ii) FINDINGS §3e cites the speed-screen
+counts to "outcome_data_quality_exclusions.csv / excess_construction_diagnostics.csv"
+with no row, though the rows exist (`n_implied_speed_below_50mph`, `_cell_ok`,
+`n_distance_zero_cell_ok`). (iii) Three FINDINGS figures are hand-derived, not
+transcribed: 23.8%, 0.30%, and 8,012 / 58.7% (the last is a subtraction of two CSV
+cells). Each is arithmetically correct and shows its inputs; they should be marked
+as derived.
+
+### Findings audit — item 2: script list vs git
+
+`git diff --stat 69280bc^ 14dfeb3 -- code/` touches **exactly 8 files, all new,
+4,927 insertions**, and they are exactly the 8 listed in §4 with the correct commit
+attributed to each. `05_build_excess.py` does appear in the FIX-04 commit 57d3fd8
+(+503) and again in feabab9 (+444/−…): the director's disclosure of the premature
+sweep is accurate. **The analysis-script list reconciles perfectly.** One defect in
+the surrounding paragraph — see required correction 4.
+
+### Findings audit — items 3–8
+
+3. **Headline correctly stated, not overstated.** Independent of the blocked
+   mapping (`03b_carrier_group_coverage.py` reads only `data/raw/t100/*.csv`; the
+   strings `parquet` and `carrier_nation` do not appear in its data path), verified
+   by me from the vendor files, and correctly scoped ("US-touching international
+   segments"). One residual: the claim that this is the T-100(f) *form's* design is
+   an inference from the data pattern, not yet checked against BTS documentation —
+   see required correction 8.
+4. **DEGENERATE-GATE reported split, neither reading chosen.** §3b gives both
+   readings, both thresholds, the knife-edge margin and the tier that flips it, and
+   states "Neither reading of G7 is presented as the answer anywhere in this round."
+   I found no place in FINDINGS, PROJECT_STATE, RESEARCH_LOG or DECISIONS where one
+   reading is adopted. D-01 records "Choice: None". **PASS** — with the caveat in
+   required correction 2 (the shipped panel already implements part of option (a3),
+   and that is not disclosed where the split is described).
+5. **Two-block blackout wording.** FINDINGS §3d/§5, PROJECT_STATE, RESEARCH_LOG and
+   DECISIONS D-04 all use "2022-03…2022-12 and 2023-03…2023-12, Jan/Feb computable".
+   `fig_us_only_corridor_series_excess.png` shades both blocks with the 2023-01/02
+   gap visible. **The prose is correct.** The *airborne* figure is not — correction 3.
+6. **Embargoes.** No foreign nation-level outcome is reported anywhere (none exists).
+   `excess_z` appears only as NOT-FOR-USE. The ban dictionary's agent-drafted,
+   human-unreviewed status is disclosed in §3f, §5 and inside the CSV's `definition`.
+   The pooled mean is explicitly de-headlined ("Do not headline the pooled mean").
+   No cross-national comparison is implied; both US-only figures are titled "US
+   carriers only -- not a cross-national comparison". **Two gaps:** the corridor-1
+   embargo is stated more broadly in §3b than it is practised in §3f (corrections 1
+   and 2 of the ruling's own wording, "must not be reported *as a corridor result*").
+7. **Nulls as deliverables.** The placebo's emptiness is reported three times
+   (§3a, §3f, PROJECT_STATE) and correctly interpreted as evidence about the source
+   rather than about behaviour; the all-NaN diffs table ships as a completeness
+   record; the name-churn null and the extensive-margin churn null are both reported.
+   **PASS.**
+8. **DECISIONS/register.** D-01, D-02, D-04, D-05 all carry "Choice: None" with the
+   conservative default named; D-03 (close the round) is procedural and inside the
+   standing rules. Rule 11 respected. PROJECT_STATE is genuinely undergrad-RA
+   register — glosses T-100, ADS-B, excess time, bidirectional sum, extensive margin,
+   z-score, and states dead ends. **PASS**, subject to corrections 5–7.
+
+### Gate status
+
+- **G1** N/A (no inference objects) — separately, no empty cells in any cited column.
+- **G2 / G3 / G4** N/A — no coefficient, SE or p-value column exists in the round.
+- **G5** PASS — every share/rate/precision column in all 29 CSVs ∈ [0,1]; every
+  family reports its full cell count (2,249 coverage cells; 5,824 wedge cells
+  including 3,780 zeros; 364 diff rows including the placebo).
+- **G6** PASS as designed and enforced (2,213 exclusions written and reconciled).
+- **G7** **DEGENERATE-GATE, BLOCKED-NEEDS-HUMAN** — correctly declared, neither
+  reading chosen, decision-grade packet in the round folder.
+- **G8** PASS — enforced in code and mutation-tested; the two rules were not relaxed.
+- **G9** **PARTIAL** — FINDINGS complies (with the three derived figures noted);
+  PROJECT_STATE gives file-level but not row-level traces; DECISIONS.md and
+  RESEARCH_LOG.md carry typed result numbers outside rule 5's sanctioned exception.
+
+### Required corrections (documentation only — no analysis re-run, no number changes)
+
+1. **`ROUND_01_FINDINGS.md` §3f and `figures/fig_data_availability.png`: label the
+   nation counts as mapping-derived.** "23 nations ever observed on US–East Asia,
+   30 on the Europe placebo…" is a FIX-02-derived, MATCH-SENSITIVE quantity, and the
+   availability grid prints those labels (including the "AR" row on the placebo,
+   which is `N0`/`Z0` Norse Atlantic, and the "CA" row carrying the 2-departure
+   `WPT` false zero) to a human's eye with no caveat. Add the NEW-06 cycle-2
+   advisory A10 sentence — "these are mapped labels, not verified nationalities" —
+   next to the counts and in the figure caption.
+2. **§3c must disclose that the shipped panel drops the `icao` match tier**
+   (`panel_filter_log.csv`, row `icao_tier_dropped`, 347 rows) under the overseer's
+   conservative ruling. This matters because it is materially option **(a3)** of the
+   decision the human is being asked to make in D-01, already partly in force. State
+   it as a conservative default, explicitly **not** a resolution of the gate. Same
+   sentence belongs in D-01 (which mentions it) and in §2's FIX-04 bullet (which
+   does not).
+3. **`figures/fig_us_only_corridor_series_airborne.png` subtitle contradicts the
+   round's own finding.** It reads "…the 2022-03..2023-12 event window where the
+   excess-level series (below) is blacked out", i.e. the single-block shape, while
+   the excess panel beside it plots real 2023-01/02 points and the FINDINGS say two
+   ten-month blocks. Regenerate the caption with the two-block wording, or add this
+   to §5's carried advisories alongside the y-axis item (it is currently listed for
+   the y-axis only).
+4. **§4's ENV paragraph is inaccurate.** Commit 8694d59 did **not** commit
+   `code/utils.py` (that file's last commit is 8221a6c; it was restored in the
+   working tree with `git checkout --`, per STATUS 21:05). What 8694d59 actually
+   added under `code/` is `98_check_trino_usage.py` (+58) and `opensky_query.py`
+   (+307), neither of which is named. Restate the paragraph so the git reconciliation
+   is literally true; the 8-script analysis list itself is correct and stays.
+5. **`PROJECT_STATE.md`: add row/spec traces.** Every number there is correct and I
+   located all of them, but G9 requires `(file.csv, row/spec)`; the file currently
+   gives file names only (e.g. 1,133,545 → add "36 rows `carrier_group==0`,
+   `n_rows` summed"; 0.9021/0.8631 → "row `foreign`"; "about 79%" → "row
+   `share_exits_reentering_ever` = 0.788126").
+6. **`RESEARCH_LOG.md` item 5 cites the wrong decision ID:** the blackout /
+   baseline-rule decision is **D-04**, not D-03 (D-03 is the round-close decision).
+7. **Typed result numbers in `DECISIONS.md` and `RESEARCH_LOG.md`.** Rule 5's
+   sanctioned exception names only FINDINGS and PROJECT_STATE. Every number I
+   checked in both files is correct and file-traced, and a decision packet arguably
+   needs its evidence inline — so this needs either a human ruling that extends the
+   exception to DECISIONS/RESEARCH_LOG with the same inline-trace requirement, or
+   the numbers replaced by pointers. Do not silently continue the practice.
+8. **Soften the one unverified external claim.** "This is a property of BTS's
+   reporting schedule — the foreign-carrier form (T-100(f)) collects volume, not
+   block or airborne time" is an inference; "(Confirming against BTS's published
+   T-100(f) data-element list needs an attended web session; it is a confirmation
+   step, not a doubt)" pre-judges it. The *pattern* is established beyond doubt (I
+   reproduced it from the vendor files); the *form's* content is not yet sourced.
+   Neutral wording, with next-steps item 9 kept.
+9. **§3d, one clause is slightly wrong:** "Every surviving 2022 cell is therefore
+   *before* the February-2022 event." The 1,162 surviving 2022-02 cells are *in* the
+   event month (the Russian ban lands 24–28 Feb 2022), so they are contemporaneous,
+   not pre-event. Restate as "in or before the event month".
+
+Advisories (no action required this round): the `us` label in
+`coverage_column_availability.csv` pools `CARRIER_GROUP == 7` (382 rows, 2002–2004),
+whose US status is asserted by convention in `03b_carrier_group_coverage.py:39` and
+disclosed only as an "oddity" in §3e — immaterial at 0.025% of US rows, but a
+referee could ask. `FINAL_RUN_LOG.md` line 2 reads "Active round: # STATUS", i.e.
+`build_run_log.py` is picking up STATUS.md's first line instead of the round path —
+cosmetic, belongs in the next cleanup task. The NEW-06 advisory B4 (the 117 vs 48
+`n_speed_gt_700mph_diagnostic` split by method) is not in §5's carried list, though
+§3e cites the right one.
+
+## OVERALL: NOT READY FOR HUMAN
+
+Round 1 set out to measure a carrier-nationality wedge in airborne time on
+US-touching international segments and instead established, at maximal strength,
+that the wedge is not measurable in this source: across all 36 raw year files
+1990–2025, 1,133,545 foreign-carrier rows contain zero positive airborne times,
+zero positive ramp times and zero nulls — literal zeros in every row
+(`coverage_by_carrier_group.csv`, `carrier_group == 0`) — while US carriers in the
+very same files report airborne time in 0.996381 of rows
+(`coverage_column_availability.csv`, row `(us, AIR_TIME)`). I reproduced that from
+the vendor CSVs myself, independent of every project artifact, and it does not
+depend on the blocked nationality mapping. The consequence propagates exactly as
+the documents say: 2,213 of 2,249 nation × year coverage cells fail G6 at a share
+of exactly 0.0, the 36 survivors are all US (`coverage_audit.csv`), and 0 of 908
+non-US anchor-corridor cells pass — identically on the three treated corridors and
+on the European placebo (`coverage_by_corridor.csv`), which is what tells us this is
+a data property rather than a behavioural null. What was delivered instead is
+solid: a reconciled ingest (2,662,470 rows read and written, 0 dropped,
+`ingest_rowcounts.csv`), a 1,026,729-cell directed panel of which 517,076 pass
+`cell_ok` with a mutation-tested guard that writes null rather than a fabricated
+zero (`panel_filter_log.csv`), a US-only excess series on 393,148 cells centred at
+median 0.011486 minutes (`desc_outcomes.csv`, `excess_min_w`, `decade == all`), and
+a complete 5,824-row availability family in which every one of the 5,460 empty
+non-US cells carries a machine-written reason (`raw_wedge_by_corridor.csv`). Two
+ten-month blackouts (2022-03…2022-12, 2023-03…2023-12, Jan/Feb of both years
+surviving at 1,156/1,162/1,169/1,170 cells — `baseline_failures.csv`) put the
+excess outcome out of reach exactly at the motivating event, which is the round's
+principal limitation and is stated as such. **Every number in the two human-facing
+documents traced and recomputed correctly — I found no transcription or citation
+error in ~90 checks.** The NOT READY verdict rests entirely on nine documentation
+defects, three of which could actually mislead the human who is about to rule: a
+shipped figure caption that still asserts the single-block blackout the round
+disproved (correction 3), an undisclosed sample restriction that is itself one of
+the options in the pending D-01 ruling (correction 2), and mapped-nation labels
+printed on a figure and counted in the prose without the MATCH-SENSITIVE caveat the
+task review demanded (correction 1). None requires re-running anything.
+
+**Open flags:** DEGENERATE-GATE / BLOCKED-NEEDS-HUMAN on FIX-02 (G7 split
+0.902110 coverage vs 0.863077 precision-adjusted, neither chosen, knife-edge by
+41,643 departures against an `icao` tier of 47,345 at 0.493759 home-zero);
+MATCH-SENSITIVE on mapped RU and IR (and now AR, CR, and three codes mis-mapped to
+US); PLACEBO-EMPTY rather than PLACEBO-FAIL (the placebo is uninformative because
+the data are absent, not because the design failed); `excess_z` NOT-FOR-USE;
+`ban_nations_2022.csv` agent-drafted and human-unreviewed; the BTS T-100(f) form
+citation unverified pending an attended web session.
+
+**The three results a referee will attack first:**
+1. *"Foreign carriers never report airborne time"* — attack: "you downloaded the
+   wrong file / mis-parsed zeros as data." **Defended.** Same-file US completeness
+   at 0.996381, zeros not blanks, 36 consecutive years, no exception, reproduced
+   from raw by two independent implementations (the task script and mine). The only
+   residual is the documentary citation to BTS's T-100(f) element list (correction 8).
+2. *The carrier→nation mapping* — attack: "your nationality variable is wrong, so
+   nothing built on it means anything." **Not defended, and correctly so:** the gate
+   is declared degenerate, both readings are on the record, the specific failures are
+   named (KV→RU 222,939 dep at home share 0.0; RV→IR 191,266; TA→CR 347,572;
+   N0/Z0→AR; Asiana unmatched, ICN foreign coverage 0.675340), and no nation-level
+   result is claimed. The correct posture, pending the human's D-01 ruling.
+3. *The excess-time construction* — attack: "your outcome is missing exactly when
+   your event happens, and its pooled mean is a knife-edge artifact of a one-sided
+   speed screen." **Half defended.** The blackout is documented to the month and not
+   papered over; the pooled mean is explicitly de-headlined and its −59% move under a
+   150 mph screen is on the record (0.034744 → 0.014407, with 58.7% of the outcome's
+   sum on 0.30% of cells). Undefended by design: the screen threshold and the
+   baseline rule are D-05 and D-04, reserved to the human.
+
+**Top items the human must decide (all evidence is in the round folder; agents need
+nothing further):** (1) D-01 — which reading of G7 governs, and whether a dated
+carrier-nationality source replaces the 2014 OpenFlights lookup; note that option
+(a3) is already partly in force in the shipped panel (correction 2). (2) D-02 — the
+Phase-1 re-scope among (A) volume/extensive margin, (B) US-only route-exposure
+design, (C) accelerate OpenSky ADS-B, (D) acquire foreign block-time data; the
+director's non-binding read is (C), and the attended extract request is the single
+highest-value next action. (3) D-04 — the baseline rule against the 2022–23
+blackouts. (4) D-05 — the implied-speed screen threshold and whether it becomes
+two-sided. (5) Whether rule 5's number-citation exception extends to DECISIONS.md
+and RESEARCH_LOG.md (correction 7).
+
+Return path: corrections 1–9 are director-side text and one figure caption. On
+their completion I will re-check only those items and flip this section to READY.
+
+---
+
+## ROUND 01 close — final verification of the 9 corrections — 2026-09-02 (overseer)
+VERDICT: PASS (deltas only; prior audits not re-litigated)
+
+**Checks run (recomputed from CSVs, not read from prose):**
+- No CSV changed under the figure work. `git diff HEAD` over `rounds/round-1-t100-panel/`
+  returns exactly one changed file: `figures/fig_us_only_corridor_series_airborne.png`.
+  `raw_wedge_by_corridor.csv` and `raw_wedge_diffs.csv` were rewritten this cycle
+  (mtime 06:00 vs commit 14dfeb3 at 05:36) and are **byte-identical to HEAD**; so are
+  `fig_data_availability.png` and `fig_us_only_corridor_series_excess.png`. The
+  determinism claim is therefore independently corroborated, not taken on report.
+- Caption wording is true of the data, not just derived from a constant. From
+  `raw_wedge_by_corridor.csv` (nation US, window full_2019_2024, 4 corridors):
+  `airborne_min_mean_wtd` non-null 4/4 corridors in **every one of the 20 blackout
+  months**; `excess_min_w_wtd` non-null 0/4 in all 20; non-null 4/4 in 2022-01,
+  2022-02, 2023-01, 2023-02. The programmatic `blackout_desc`
+  ("2022-03..2022-12 and 2023-03..2023-12") and `computable_desc`
+  ("2022-01/02 and 2023-01/02") both match. Both captions now consume the same
+  string, so drift is structurally prevented.
+- §3d numbers re-derived from `baseline_failures.csv` (granularity == month):
+  n_excess_computed = 1156 (2022-01), **1162 (2022-02)**, 1169 (2023-01), 1170
+  (2023-02), and 0 in each of the twenty 2022-03…12 / 2023-03…12 rows. The new
+  "in or before the event month" wording and the contemporaneity note are correct.
+- icao disclosure: `panel_filter_log.csv`, step `icao_tier_dropped`, n_dropped =
+  **347** (1,819,635 -> 1,819,288). Present in all three commissioned places —
+  ROUND_01_FINDINGS §3c (L250-255), §2 FIX-04 bullet (L108-111), DECISIONS D-01
+  options (L32-38) — each stating conservative default, materially option (a3),
+  not a resolution of the gate.
+- §3f MATCH-SENSITIVE naming: `carrier_nation_precision_audit.csv` rows `N0`
+  (Norse Atlantic Airways -> nation_iso2 **AR**, 7,272 dep, home share 0.0),
+  `Z0` (Norse Atlantic UK -> **AR**, 5,630 dep, home share 0.0), `WPT`
+  (World2Fly Portugal -> **CA**, **2** dep, home share 0.0). Both AR and CA are
+  in the placebo corridor's 30-nation list. Nation counts recomputed from
+  `raw_wedge_by_corridor.csv`: useastasia 23, useurope_placebo 30, usmideast 9,
+  usindia 2 — exact.
+- ENV paragraph (§4, L442-450): `git show --stat 8694d59` adds under `code/`
+  exactly `98_check_trino_usage.py` and `opensky_query.py`. Accurate as written,
+  and correctly scoped to `code/`.
+- PROJECT_STATE traces (correction 5), six recomputed, all exact:
+  1,133,545 / 0 (`coverage_by_carrier_group.csv`, 36 rows carrier_group==0);
+  2,662,470 read = written, 0 dropped (`ingest_rowcounts.csv`, 36 file rows);
+  p50 = 0.011486 (`desc_outcomes.csv`, excess_min_w, decade==all);
+  0.90211 and 0.863077 (`carrier_nation_matchrate.csv`, category==foreign,
+  `match_rate_weighted` / `precision_adjusted_match_rate_home0`);
+  0.788126 (`extensive_margin_churn.csv`); 5,904 (`excess_construction_diagnostics.csv`).
+- RESEARCH_LOG item 5 now cites **D-04** (correction 6). Typed-number headers
+  present in both RESEARCH_LOG.md and DECISIONS.md; D-06 raised as
+  DECISION-PENDING (correction 7). T-100(f) pattern/inference split present in the
+  headline (L32-41), §6 item 9, RESEARCH_LOG item 1 and PROJECT_STATE L51-55
+  (correction 8). Three optional advisories folded in: group-7 pooling (§3e
+  L358-363), build_run_log "Active round" cosmetic bug (§6 item 8), B4 117-vs-48
+  conditioning split (§5 L485-489).
+- Environment: `python code/99_validate_outputs.py` -> "29 CSVs scanned, 0 FAIL,
+  0 WARN", exit 0 (run by me). `python code/98_check_trino_usage.py` -> 0 FAIL,
+  exit 0 (run by me). No OpenSky pull this round, so no `logs/opensky_queries.log`
+  is expected or required. `FINAL_RUN_LOG.md` header line present ("generated
+  2026-09-02 06:07:54 — git 14dfeb3"), mtime 06:07 — newer than every round CSV
+  (latest 06:00). `MIN_SCRIPTS.md`: I re-ran `code/sync_min_scripts.py` into a
+  scratch comparison (exit 0, 15 artifacts / 7 scripts) — body byte-identical to
+  the director's file apart from the header timestamp; original restored.
+  `human-readable/PRESENTATION.md` untouched by agents (last commit 8221a6c, diff
+  clean). No `fig_raw_wedge_*.png` exists; the script's own end-of-run assertion
+  logged confirmation; `logs/06_wedge_availability.log` shows 0 warnings/errors.
+- Figures rendered and read, not assumed. `fig_us_only_corridor_series_excess.png`
+  and `fig_data_availability.png` are correct and legible. The airborne panel's
+  y-axis now autoscales per corridor as intended (recomputed limits: useastasia
+  569.9–697.8, useurope_placebo 466.5–497.1, usindia 794.7–925.6, usmideast
+  611.4–814.9); the squeeze is gone and the two-block subtitle is on its face.
+
+**Gate status:** G1–G5 PASS (validator 29/0/0, exit 0; no inferential CSV was
+produced or altered this cycle). G6 PASS (unchanged). **G7 remains split and
+unresolved — BLOCKED-NEEDS-HUMAN / DEGENERATE-GATE, correctly not chosen by any
+agent**, and the correction-2 disclosure now makes explicit that the shipped
+panel already runs part of option (a3) as a conservative default without
+pre-committing the human. G8 PASS (baseline rules enforced, not relaxed). G9 PASS
+(every FINDINGS number carries a `(file.csv, row/spec)` trace; the new §3f, §3c
+and §3d numbers all recomputed above).
+
+**Findings (all residual, none blocking):**
+1. **Stale advisory text, conservative direction.** ROUND_01_FINDINGS §5
+   (L478-481) and §6 item 8 (L546-548) still describe the airborne figure's
+   squeezed y-axis and single-block subtitle as open defects "the econometrician
+   is regenerating". Both are fixed in the artifact I just read. Direction of the
+   error is safe (over-caveating), no number or conclusion is touched. CARRIED as
+   advisory A1.
+2. **New, minor layout regression on the airborne figure.** The one-line
+   unwrapped suptitle plus `bbox_inches="tight"` widened the canvas from
+   3,819 to 5,763 px (aspect 2.46 -> 3.71); the plot body now occupies 41% of the
+   image width, against 62% before and 88% on the excess figure. Content is
+   correct and legible at native resolution; this is layout only, and the figure
+   is in no paper/ or slides/ artifact. One-line fix (wrap the subtitle before
+   `suptitle`). CARRIED as advisory A2, to be fixed in the same cleanup edit as A1.
+3. **Correction 8 did not propagate to the figure.** `fig_data_availability.png`
+   subtitle still asserts the mechanism as fact: "structurally absent for every
+   foreign operator (T-100(f) reporting schedule)", while the prose now correctly
+   labels that attribution an inference. I grepped every shipped artifact: the
+   unhedged phrasing exists **only** in this figure caption (source:
+   `code/06_wedge/06_wedge_availability.py`) — not in any CSV, TeX table, paper,
+   or slide. Unlike the AR/CA label gap, which §3f discloses, this one is
+   undisclosed. CARRIED as advisory A3.
+4. **Code nit, inert here.** In the new autoscale branch,
+   `pad = 0.08 * (finite_y.max() - finite_y.min() or 1.0)` binds `or` to the
+   minimum, not to the range; the intended guard is `(max - min) or 1.0`. Harmless
+   at current data (per-corridor minima 468–804, n >= 67), but a constant or
+   single-observation series would yield `set_ylim(v, v)`. CARRIED as advisory A4.
+5. **Owed mechanics, not defects.** STATUS.md has no round-close entry yet, and
+   the close commit (findings, RESEARCH_LOG, DECISIONS, PROJECT_STATE,
+   MIN_SCRIPTS, FINAL_RUN_LOG, the figure fix, the script edit) is still
+   uncommitted. §4's "reconciled against commits 69280bc … 14dfeb3" will be one
+   commit short once the close commit lands, which touches
+   `code/06_wedge/06_wedge_availability.py` (already listed by script, so the
+   script list itself stays reconciled).
+
+**Ruling on correction 7 (typed numbers in DECISIONS.md / RESEARCH_LOG.md).**
+Rule 5's text is not genuinely ambiguous: "No one types a result number into a
+log, report, or commit message… The one sanctioned exception: ROUND_NN_FINDINGS.md
+and human-readable/PROJECT_STATE.md." RESEARCH_LOG.md is a log by name. The
+conservative default was therefore pointers now, extension later — restoring
+numbers after a ruling of (i) is as mechanical as removing them after (ii), so
+the reversible-either-way argument does not favour keeping. The director picked
+the non-conservative branch of a rule an agent may not widen. **I am not blocking
+on it**, for three reasons that are specific and not general licence: every number
+in both files was audited correct and carries an inline `(file.csv, row/spec)`
+trace, so the drift risk rule 5 exists to stop is neutralised; the practice is
+disclosed in both file headers and escalated as D-06 rather than continued
+silently; and neither file feeds paper/, slides/, or PROJECT_STATE. **Conditions,
+binding on the next round:** no further numbers may be added to DECISIONS.md or
+RESEARCH_LOG.md until D-06 is ruled; if the human rules (ii), or has not ruled by
+the close of round 2, the round-1 entries are converted to pointers in that
+round's cleanup task. Correct call for the next occasion: apply the narrow reading
+and ask.
+
+## OVERALL: READY FOR HUMAN
+
+All nine corrections landed as described and each was verified against the
+artifact rather than the report. The figure work changed no data: both wedge CSVs
+were regenerated this cycle and are byte-identical to their committed versions, as
+are the two untouched figures, which also settles determinism independently of the
+implementer's `diff -q` claim. The airborne panel's caption is now derived from
+`BLACKOUT_BLOCKS` through a helper shared with the excess panel, and the wording it
+produces is true of the data: airborne time is observed in 4 of 4 corridors in all
+twenty blackout months, excess in none of them, with 1,156 / 1,162 / 1,169 / 1,170
+computable cells in 2022-01, 2022-02, 2023-01, 2023-02 (baseline_failures.csv).
+The y-axis squeeze is gone. On the documentation side, the 347-row icao-tier drop
+(panel_filter_log.csv, `icao_tier_dropped`) is now disclosed in all three places
+and is correctly framed as a conservative default that is materially part of
+option (a3) without resolving G7; the §3f nation counts (23 / 30 / 9 / 2) are
+labelled mapping-derived and MATCH-SENSITIVE with the AR (N0/Z0, Norse Atlantic)
+and CA (WPT, 2 departures) rows named and traced; the T-100(f) attribution is
+separated from the established pattern in every prose location; and every
+PROJECT_STATE number now carries a row/column trace, six of which I recomputed
+exactly. Validator (29 CSVs, 0 FAIL, 0 WARN), trino check, and the regenerated run
+log are all clean and I ran the first two myself. Four residual defects remain,
+all cosmetic or documentation, and I am closing with them carried rather than
+spending a cycle: A1 stale advisory text describing two now-fixed figure defects;
+A2 the airborne figure's over-wide canvas (plot body 41% of width); A3 the
+undisclosed unhedged "(T-100(f) reporting schedule)" on the availability figure,
+which appears in no other artifact; A4 the `or 1.0` precedence nit in the padding
+expression. A1–A3 are one editing pass over one bullet and one caption; they
+belong at the top of round 2's cleanup task.
+
+**Open flags:** DEGENERATE-GATE on G7 / FIX-02 BLOCKED-NEEDS-HUMAN (3 cycles,
+terminal, correctly unresolved by agents). MATCH-SENSITIVE on every mapped
+nationality, now including the §3f corridor nation counts and the availability
+figure's row labels. Reporting embargo on all nation-level FIX-04/FIX-05 numbers
+still in force. DECISION-PENDING: D-01, D-02, D-04, D-05, D-06. Carried advisories
+A1–A4 above plus the previously logged set (tex caption "segment-months",
+write-before-assert, `departures_scope_note` wording, build_run_log "Active round"
+header, STATUS.md's two early untraced entries). No PLACEBO-FAIL: the placebo
+corridor is empty for the same structural reason as the treated corridors, which
+is the correct reading of a data property rather than a behavioural null.
+
+**The three results a referee will attack first, and their defense status:**
+(1) "Foreign carriers never report airborne time — you must have downloaded it
+wrong." **Fully defended.** Read straight from the 36 vendor CSVs using BTS's own
+CARRIER_GROUP, independent of the blocked mapping, reproduced by me: 1,133,545
+rows, 0 with AIR_TIME > 0, 0 nulls, against 0.9964 for US carriers in the same
+files. The only soft spot is the *mechanism* label, now correctly stated as
+inference in prose (and, per A3, not yet on the figure).
+(2) "Your carrier nationalities are wrong, so the whole panel is suspect."
+**Defended by containment, not by resolution.** G7 is split (0.9021 coverage vs
+0.8631 precision-adjusted), FIX-02 is blocked, and the headline does not depend on
+the mapping at all. The new disclosure that the shipped panel already drops the
+icao tier closes the one gap a referee could have called a silent choice.
+(3) "Your excess measure is an artefact of screening and baseline choices."
+**Half defended, by design.** The 50 vs 150 mph screen moves the pooled mean
+0.0347 -> 0.0144 with 58.7% of the outcome's sum on 0.30% of cells, and the
+2022–23 blackouts are documented to the month; both are reserved to the human as
+D-05 and D-04 rather than settled by an agent, and no pooled mean is headlined.
+
+**Decisions the human must make, in priority order:**
+1. **D-02 — what Phase 1 now is** (A volume/extensive margin, B US-only
+   route-exposure, C accelerate OpenSky ADS-B, D acquire foreign block-time data).
+   Everything else is downstream of this; the director's non-binding read is (C).
+2. **D-01 — which reading of G7 governs**, and whether a dated carrier-nationality
+   source replaces the 2014 OpenFlights lookup. Note option (a3) is already partly
+   in force as a conservative default (347 rows).
+3. **Authorise the attended OpenSky extract session** (T1–T9). Not a DECISIONS
+   entry, but it is the single highest-value action and it gates (C).
+4. **D-04 — the baseline rule** against the 2022–23 blackouts.
+5. **D-05 — the implied-speed screen threshold** and whether it becomes two-sided.
+6. **D-06 — whether rule 5's citation exception extends to DECISIONS.md and
+   RESEARCH_LOG.md**, under the identical inline-trace requirement, or the numbers
+   become pointers.
+7. **Review `data/raw/events/ban_nations_2022.csv`** (agent-drafted,
+   human-unreviewed) and supply `closures.csv`.

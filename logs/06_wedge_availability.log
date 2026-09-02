@@ -172,3 +172,57 @@
 [2026-09-02 05:23:40] 06_wedge_availability INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/figures/fig_us_only_corridor_series_excess.png.
 [2026-09-02 05:23:40] 06_wedge_availability INFO: Confirmed: none of the 5 prohibited wedge figures exist in /workspaces/flight-risk/rounds/round-1-t100-panel/figures.
 [2026-09-02 05:23:40] 06_wedge_availability INFO: DONE (reduced form). No cross-national wedge was computed or plotted.
+[2026-09-02 06:00:17] 06_wedge_availability INFO: Loaded panel_excess.parquet: 1026729 rows; panel_extensive.parquet: 8810640 rows.
+[2026-09-02 06:00:17] 06_wedge_availability INFO: Governing-fact re-check holds: 0 non-US cells with non-null airborne_min_mean, 0 with coverage_ok == True (n=457018 non-US matched cells in panel_excess.parquet).
+[2026-09-02 06:00:17] 06_wedge_availability INFO: Structural non-reporting note (sourced from coverage_by_carrier_group.csv): 0 / 1133545 rows have AIR_TIME>0.
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Corridor definitions cross-checked against carrier_nation_corridor_coverage.csv: no drift.
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Corridor-restricted rows: panel_excess 194889 / 1026729, panel_extensive 965520 / 8810640.
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Non-US corridor cells (matched population, all 4 corridors, panel_excess grain): 114993. Of those, non-null airborne_min_mean: 0 (expected 0).
+[2026-09-02 06:00:18] 06_wedge_availability INFO: fix02_caveat (useastasia rows only): FIX-02 EMBARGO: corridor-1 (useastasia) nation-level match rate at ICN is 0.6753 (precision-adjusted: 0.6572; Asiana's class-F departures absent from the matched population); TPE is 0.9562; every other NEW-06 anchor is >= 0.956. Not reportable as a headline result until FIX-02 unblocks (STATUS.md, FIX-02 BLOCKED-NEEDS-HUMAN).
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Corridor useastasia: 23 operator nations ever observed (BR, CA, CH, CN, DE, FI, FR, GB, HK, IL, IN, JP, KR, MO, MX, MY, NL, PH, SE, SG, TH, TW, US).
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Corridor useurope_placebo: 30 operator nations ever observed (AE, AR, BD, CA, CH, DE, ES, FR, GB, GR, HK, IE, IL, IN, IT, JO, JP, KW, MX, NL, NO, NZ, PK, RO, RU, SA, SG, TR, US, UZ).
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Corridor usindia: 2 operator nations ever observed (IN, US).
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Corridor usmideast: 9 operator nations ever observed (AE, BH, IL, IT, MY, QA, SA, TR, US).
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Corridor useastasia: raw class-F passenger departures 2019-2024 = 436176, matched (FIX-02-mapped) = 407670, unmatched = 28506 (0.0654 share) -- top unmatched carriers: OZ=22,793, LJ=3,648, JX=2,065.
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Corridor usindia: raw class-F passenger departures 2019-2024 = 31788, matched (FIX-02-mapped) = 31788, unmatched = 0 (0.0000 share).
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Corridor usmideast: raw class-F passenger departures 2019-2024 = 202818, matched (FIX-02-mapped) = 202818, unmatched = 0 (0.0000 share).
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Corridor useurope_placebo: raw class-F passenger departures 2019-2024 = 818597, matched (FIX-02-mapped) = 818574, unmatched = 23 (0.0000 share) -- top unmatched carriers: E9=14, BF=5, EB=3.
+[2026-09-02 06:00:18] 06_wedge_availability INFO: Extensive-margin seasonality note: EXTENSIVE-MARGIN CAVEAT (extensive_margin_churn.csv): of 80,260 route-exit events across the full panel, 63,255 re-enter at some later month -- median (origin,dest,nation) triple is active only 5 of 432 months on file. n_routes_active / departures_performed_month_sum here are activity counts, NOT entry/exit events, and must not be read as an event-study outcome (per the round's own ruling on this margin).
+[2026-09-02 06:00:19] 06_wedge_availability INFO: Full family cross-join: 5824 corridor x window x nation x month rows.
+[2026-09-02 06:00:19] 06_wedge_availability INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/raw_wedge_by_corridor.csv: 5824 rows.
+[2026-09-02 06:00:19] 06_wedge_availability INFO: VERIFY: all 8 corridor x window combinations present (3780 n=0 rows among them).
+[2026-09-02 06:00:19] 06_wedge_availability INFO: Non-null airborne_min_mean_wtd among non-US family rows: 0 (expected 0).
+[2026-09-02 06:00:20] 06_wedge_availability INFO: B1 check passed: every mean_excess_*_US_ONLY_NOT_A_RESULT column is null whenever its status group has more than 1 nation with data.
+[2026-09-02 06:00:20] 06_wedge_availability INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/raw_wedge_diffs.csv: 364 rows. Non-null diff_banned_minus_not_banned: 0 (expected 0).
+[2026-09-02 06:00:20] 06_wedge_availability INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/figures/fig_data_availability.png.
+[2026-09-02 06:00:20] 06_wedge_availability INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/figures/fig_us_only_corridor_series_airborne.png.
+[2026-09-02 06:00:21] 06_wedge_availability INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/figures/fig_us_only_corridor_series_excess.png.
+[2026-09-02 06:00:21] 06_wedge_availability INFO: Confirmed: none of the 5 prohibited wedge figures exist in /workspaces/flight-risk/rounds/round-1-t100-panel/figures.
+[2026-09-02 06:00:21] 06_wedge_availability INFO: DONE (reduced form). No cross-national wedge was computed or plotted.
+[2026-09-02 06:00:28] 06_wedge_availability INFO: Loaded panel_excess.parquet: 1026729 rows; panel_extensive.parquet: 8810640 rows.
+[2026-09-02 06:00:28] 06_wedge_availability INFO: Governing-fact re-check holds: 0 non-US cells with non-null airborne_min_mean, 0 with coverage_ok == True (n=457018 non-US matched cells in panel_excess.parquet).
+[2026-09-02 06:00:28] 06_wedge_availability INFO: Structural non-reporting note (sourced from coverage_by_carrier_group.csv): 0 / 1133545 rows have AIR_TIME>0.
+[2026-09-02 06:00:29] 06_wedge_availability INFO: Corridor definitions cross-checked against carrier_nation_corridor_coverage.csv: no drift.
+[2026-09-02 06:00:29] 06_wedge_availability INFO: Corridor-restricted rows: panel_excess 194889 / 1026729, panel_extensive 965520 / 8810640.
+[2026-09-02 06:00:29] 06_wedge_availability INFO: Non-US corridor cells (matched population, all 4 corridors, panel_excess grain): 114993. Of those, non-null airborne_min_mean: 0 (expected 0).
+[2026-09-02 06:00:29] 06_wedge_availability INFO: fix02_caveat (useastasia rows only): FIX-02 EMBARGO: corridor-1 (useastasia) nation-level match rate at ICN is 0.6753 (precision-adjusted: 0.6572; Asiana's class-F departures absent from the matched population); TPE is 0.9562; every other NEW-06 anchor is >= 0.956. Not reportable as a headline result until FIX-02 unblocks (STATUS.md, FIX-02 BLOCKED-NEEDS-HUMAN).
+[2026-09-02 06:00:29] 06_wedge_availability INFO: Corridor useastasia: 23 operator nations ever observed (BR, CA, CH, CN, DE, FI, FR, GB, HK, IL, IN, JP, KR, MO, MX, MY, NL, PH, SE, SG, TH, TW, US).
+[2026-09-02 06:00:29] 06_wedge_availability INFO: Corridor useurope_placebo: 30 operator nations ever observed (AE, AR, BD, CA, CH, DE, ES, FR, GB, GR, HK, IE, IL, IN, IT, JO, JP, KW, MX, NL, NO, NZ, PK, RO, RU, SA, SG, TR, US, UZ).
+[2026-09-02 06:00:29] 06_wedge_availability INFO: Corridor usindia: 2 operator nations ever observed (IN, US).
+[2026-09-02 06:00:29] 06_wedge_availability INFO: Corridor usmideast: 9 operator nations ever observed (AE, BH, IL, IT, MY, QA, SA, TR, US).
+[2026-09-02 06:00:30] 06_wedge_availability INFO: Corridor useastasia: raw class-F passenger departures 2019-2024 = 436176, matched (FIX-02-mapped) = 407670, unmatched = 28506 (0.0654 share) -- top unmatched carriers: OZ=22,793, LJ=3,648, JX=2,065.
+[2026-09-02 06:00:30] 06_wedge_availability INFO: Corridor usindia: raw class-F passenger departures 2019-2024 = 31788, matched (FIX-02-mapped) = 31788, unmatched = 0 (0.0000 share).
+[2026-09-02 06:00:30] 06_wedge_availability INFO: Corridor usmideast: raw class-F passenger departures 2019-2024 = 202818, matched (FIX-02-mapped) = 202818, unmatched = 0 (0.0000 share).
+[2026-09-02 06:00:30] 06_wedge_availability INFO: Corridor useurope_placebo: raw class-F passenger departures 2019-2024 = 818597, matched (FIX-02-mapped) = 818574, unmatched = 23 (0.0000 share) -- top unmatched carriers: E9=14, BF=5, EB=3.
+[2026-09-02 06:00:30] 06_wedge_availability INFO: Extensive-margin seasonality note: EXTENSIVE-MARGIN CAVEAT (extensive_margin_churn.csv): of 80,260 route-exit events across the full panel, 63,255 re-enter at some later month -- median (origin,dest,nation) triple is active only 5 of 432 months on file. n_routes_active / departures_performed_month_sum here are activity counts, NOT entry/exit events, and must not be read as an event-study outcome (per the round's own ruling on this margin).
+[2026-09-02 06:00:30] 06_wedge_availability INFO: Full family cross-join: 5824 corridor x window x nation x month rows.
+[2026-09-02 06:00:30] 06_wedge_availability INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/raw_wedge_by_corridor.csv: 5824 rows.
+[2026-09-02 06:00:30] 06_wedge_availability INFO: VERIFY: all 8 corridor x window combinations present (3780 n=0 rows among them).
+[2026-09-02 06:00:30] 06_wedge_availability INFO: Non-null airborne_min_mean_wtd among non-US family rows: 0 (expected 0).
+[2026-09-02 06:00:31] 06_wedge_availability INFO: B1 check passed: every mean_excess_*_US_ONLY_NOT_A_RESULT column is null whenever its status group has more than 1 nation with data.
+[2026-09-02 06:00:31] 06_wedge_availability INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/raw_wedge_diffs.csv: 364 rows. Non-null diff_banned_minus_not_banned: 0 (expected 0).
+[2026-09-02 06:00:31] 06_wedge_availability INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/figures/fig_data_availability.png.
+[2026-09-02 06:00:32] 06_wedge_availability INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/figures/fig_us_only_corridor_series_airborne.png.
+[2026-09-02 06:00:32] 06_wedge_availability INFO: Wrote /workspaces/flight-risk/rounds/round-1-t100-panel/figures/fig_us_only_corridor_series_excess.png.
+[2026-09-02 06:00:32] 06_wedge_availability INFO: Confirmed: none of the 5 prohibited wedge figures exist in /workspaces/flight-risk/rounds/round-1-t100-panel/figures.
+[2026-09-02 06:00:32] 06_wedge_availability INFO: DONE (reduced form). No cross-national wedge was computed or plotted.
