@@ -1490,3 +1490,685 @@ authority, and it is written to survive exactly this situation. My ruling:
     the exact-duplicate / cell-key non-uniqueness warning for FIX-04; and the
     note that the eight NA-count literals are drop-specific while the NA-string
     guard is the durable check.
+
+---
+
+## FIX-03 review — 2026-09-02 00:32 UTC
+
+**VERDICT: FAIL** (additive-only required actions; no result is wrong, and
+nothing below asks for a re-specification. The task's own VERIFY items all
+pass and every number I recomputed reproduced exactly. It fails because the
+single most consequential claim of the round is supported by no committed
+script and no round-folder CSV, and therefore cannot be cited under G9, and
+because two deliverable-text items are not met.)
+
+### 0. HEADLINE: the zero-foreign-air-time finding is **CONFIRMED**, and it is
+### stronger and cleaner than the implementer stated.
+
+I verified this from the raw CSVs under `data/raw/t100/` with my own code,
+using only BTS's `CARRIER_GROUP` field, touching neither the FIX-01 parquet
+nor the FIX-02 mapping. Not a sample of years — **all 36 files, 1990-2025**:
+
+- `CARRIER_GROUP` values present in the drop: {0, 1, 2, 3, 7}. Group 0 is the
+  foreign group (2019 top codes by departures: AC Air Canada, KV Sky Regional,
+  WS Westjet, QK Jazz, BA British Airways, CM Copa, LH Lufthansa); groups
+  1/2/3 are US large/national/regional (AA, UA, DL, JetBlue, Mesa, Piedmont)
+  and group 7 (2002-2004 only, 382 rows) is ABX Air, a US freighter.
+- **Rows in CARRIER_GROUP 0 with `AIR_TIME > 0`, all 36 files: 0 of 1,133,545.**
+- **Rows in CARRIER_GROUP 0 with `RAMP_TO_RAMP > 0`, all 36 files: 0 of 1,133,545.**
+- Nulls in those columns for group 0: **0**. Every value is the literal string
+  `0.00`. There are **no blank cells anywhere in the 2019 file** (checked every
+  column, `(df=='').sum()` is zero for all 44 columns), so `0.00` is this
+  export's representation of "not reported".
+- US groups: `AIR_TIME > 0` on 1,523,392 of 1,523,785 rows with
+  `DEPARTURES_PERFORMED > 0` (99.97%). Per-year, per-group counts reproduce the
+  implementer's 2019 figures exactly (group 0: 41,958 rows, share 0.0;
+  groups 1/2/3: share 1.000 among departures>0).
+
+So the wording should be **"never", not "essentially never"**: it is not a
+pattern of gaps, not "almost all", and there is no single foreign carrier
+anywhere in the 36 years that reports a nonzero airborne or ramp minute. The
+distribution is perfectly binary — in `coverage_audit.csv`, exactly 28 of
+2,249 cells have a share strictly between 0 and 1, all of them US; every one
+of the 2,213 G6-failing cells has `share_air_time_valid` **exactly 0.0**
+(`max(share_air_time_valid)` over `coverage_excluded_cells.csv` = 0.0).
+
+Two independent corroborations the implementer did not report and should:
+
+- The finding survives the FIX-02 exclusion. Of the 70,132 rows FIX-03 drops
+  for being unmatched/refused, **70,120 are CARRIER_GROUP 0 with
+  `AIR_TIME>0` share 0.0**, and the other 12 are US-group rows with share 1.0.
+  So "every foreign row" is literally true over the whole class-F, departures>0
+  sample, not merely over the 96.14% that FIX-02 could map.
+- The mapping never assigns a US-carrier-group code to a foreign nation
+  (0 rows), and 1,816 foreign-group rows are mapped to nation `US` — those
+  1,816 rows are exactly why US coverage is 0.9923-1.0 rather than 1.0
+  (US-mapped rows with `AIR_TIME==0`: 1,876, of which 1,816 are group 0).
+  That is a FIX-02 precision leak, not an airborne-time gap.
+
+### 1. Which columns are US-only (all 36 files, share of rows with value > 0)
+
+| column | foreign (grp 0) | US (grp 1/2/3/7) |
+|---|---|---|
+| AIR_TIME | **0.000000** | 0.996381 |
+| RAMP_TO_RAMP | **0.000000** | 0.996632 |
+| DEPARTURES_SCHEDULED | **0.000000** | 0.716241 |
+| MAIL | **0.000000** | 0.201192 |
+| DEPARTURES_PERFORMED | 1.000000 | 0.996638 |
+| DISTANCE | 1.000000 | 0.999835 |
+| SEATS | 0.840383 | 0.785076 |
+| PASSENGERS | 0.835525 | 0.763837 |
+| PAYLOAD | 0.809544 | 0.996519 |
+| FREIGHT | 0.651918 | 0.547579 |
+
+Foreign operators report **volume**, never **time**: performed departures,
+distance, seats, passengers, payload, freight are all present and usable;
+airborne time, ramp-to-ramp time, scheduled departures and mail are uniformly
+absent.
+
+### 2. Extract artifact or BTS reporting? — **BTS reporting.**
+
+Stated plainly, as commissioned. The evidence in hand:
+(a) `AIR_TIME` and `RAMP_TO_RAMP` are **in the header of every one of the 36
+files** and are fully populated for US carriers **in those same files**, so
+this is not a column the download omitted; (b) the export writes no blanks at
+all, so foreign rows are zero-filled, not null-filled; (c) the absent set is
+not arbitrary — it is exactly `{airborne time, ramp-to-ramp, departures
+scheduled, mail}`, which is the data-element difference between the US
+carriers' T-100 schedule and the foreign carriers' T-100(f) schedule; (d) it
+holds without a single exception for 36 consecutive years and every foreign
+carrier. A different download of the same BTS table will return the same
+zeros. **Consequence: the fix is a different data source, not a different
+download.** The one check I cannot run unattended is BTS's own documentation
+of the T-100(f) data elements (needs a web session); I record that as the
+confirming step, not as doubt about the conclusion.
+
+### 3. No imputation, zero-vs-null kept distinct — confirmed
+
+`code/03_audit/03_coverage_audit.py` counts `>0`, `==0` and `isna()` in three
+separate columns per field (`n_air_time_valid/zero/null`, `n_ramp_*`) and
+writes all three shares; they sum to 1 in every cell (max deviation 2.2e-16 in
+both CSVs). The only `fillna` in the script is on the boolean precision flag
+`flag_home_share_zero` (defaulted False for `us_by_construction` codes, which
+are absent from the precision audit by design) — no outcome column is filled,
+smoothed, or interpolated anywhere. `share_air_time_null` and
+`share_ramp_null` are 0.0 in all 2,249 + 1,037 cells, correctly, because the
+source zero-fills. `data/raw/` is untouched (`git status` clean under it).
+
+### 4. Checks run (recomputed independently, not reread)
+
+- Full independent rebuild of `coverage_audit.csv` from the two parquets +
+  precision CSV: 2,249 cells, outer-merge `both`=2,249, `left_only`=0,
+  `right_only`=0; max abs difference **0** on `n_segment_months`,
+  `n_air_time_valid`, `n_air_time_zero`, `n_air_time_null`, `n_ramp_valid`,
+  `dep_total`, `median_departures`, `dep_home0`, and 1.1e-16 on
+  `share_air_time_valid`.
+- Independent rebuild of `coverage_by_corridor.csv`: 1,037 cells, all `both`,
+  max abs difference 0 on `n_segment_months`, `n_air_time_valid`, `dep_total`,
+  `median_departures`.
+- G6: my count of cells with `share_air_time_valid < 0.50` = **2,213**, matching
+  `coverage_excluded_cells.csv` row count exactly; departures-weighted failure
+  share **0.3976470** (16,078,928 / 40,435,177).
+- TeX traceability: `US` row `1990s cov.\ % = 99.7` recomputes to 0.9965,
+  `2020s = 99.6` to 0.9964, `Overall = 99.8` to 0.9982, `Total dep. =
+  24,356,249` exact; `RU home0 % = 80.2` to 0.8019; `GB = 1.0` to 0.0098;
+  `DE = 2.4` to 0.0238; 93 nation rows = 93 nations in the CSV. All
+  departures-weighted from `coverage_audit.csv` only.
+- Determinism: re-ran the script; all six outputs **byte-identical** (sha256
+  match on all four CSVs, the .tex and the .png).
+- `python code/99_validate_outputs.py` → `16 CSVs scanned, 0 FAIL, 0 WARN`,
+  **exit 0**. `python code/98_check_trino_usage.py` → `0 FAIL`, **exit 0**.
+  All six new artifacts are inside `rounds/round-1-t100-panel/` and inside the
+  validator's directory-wide scan. No network, no Trino, no OpenSky (T8 clean);
+  the script imports only pandas/numpy/matplotlib/utils.
+- Pathology sweep over **all 16** round-folder CSVs (not a manifest): no
+  column with `share`/`rate`/`precision` in its name outside [0,1]; no all-null
+  column except two note columns in `ingest_rowcounts.csv` (FIX-01, expected);
+  no p-value columns exist this round (no regressions), so G1-G4 are vacuous.
+- `utils.setup_logger` and `utils.log_merge` both used; the merge log shows
+  1,815,580 left / 8,842 right / 1,815,580 merged, 515 `left_only`.
+- No hand-typed number in STATUS.md's FIX-03 entry (qualitative only), none in
+  the .tex (auto-generated header present), none in the figure.
+
+### 5. VERIFY items (round file, FIX-03)
+
+- [x] every share column in both coverage CSVs within [0,1] — all 7 share
+      columns in each; min 0.0, max 1.0, zero nulls, in both files.
+- [x] set equality both directions — |{cells <0.50 in `coverage_audit.csv`}| =
+      2,213, |rows in `coverage_excluded_cells.csv`| = 2,213, symmetric
+      difference **empty in both directions**; each excluded row's
+      `share_air_time_valid` equals its `coverage_audit.csv` value. The
+      assertion is in code (line 281) and it is a real assertion, not a log.
+- Corridor coverage: all four corridors present (`useastasia` 373 cells,
+  `useurope_placebo` 461, `usindia` 41, `usmideast` 162). Both directions are
+  in the underlying sample and roughly balanced (e.g. `useastasia` 48,411
+  US→foreign vs 48,694 foreign→US; `useurope_placebo` 97,390 / 100,950) — but
+  see finding 4 below.
+- Captions/titles carry "US-touching international segments" in the source
+  string — but see finding 5 below for the rendered figure.
+
+### 6. Gate status
+
+- **G1-G4**: N/A (no regression output this round). No p-values anywhere.
+- **G5**: PASS. All share columns in [0,1] in both coverage CSVs; the
+  three-way shares sum to 1 within 2.2e-16.
+- **G6**: mechanism worked exactly as designed and is **not** a FIX-03 defect:
+  2,213 / 2,249 nation-year cells excluded, 39.76% of departures, all
+  foreign, all at exactly 0.0 coverage; **0 of 908 non-US anchor-corridor
+  cells pass**. The round file's stated ex-ante "what would count against
+  proceeding" is triggered at the maximum possible scale. FIX-03 correctly
+  reports and lists rather than relaxing; marking the task DONE (not BLOCKED)
+  is the right call, since G6 is a filter gate on FIX-04's population, not a
+  validity gate on FIX-03.
+- **G7**: unchanged, still BLOCKED-NEEDS-HUMAN / DEGENERATE-GATE. FIX-03
+  complied with my FIX-02 ruling: matched methods only, `share_dep_home0` on
+  every cell, RU/IR labelled `match_sensitive` in both CSVs and in the table
+  and figure. **However**, see finding 1: the round's headline now rests on a
+  mapping-independent fact, and the round folder contains only the
+  mapping-dependent version of it.
+- **G8, G9**: G8 N/A (no baselines yet). **G9 is the reason for the FAIL** —
+  see finding 1.
+
+### 7. FIX-02 exclusion-population reconciliation (my 244 / 1,931,914 vs the
+### implementer's 98 / 70,132 / 1,214,475) — **reconciled, no discrepancy**
+
+Different bases, both correct. My FIX-02 ruling's figures are the whole-parquet
+base (all service classes, all rows): I recompute **244 codes / 1,947,397
+departures** over all rows, of which `carrier_nation_unmatched.csv`'s
+`total_departures` column sums to exactly **1,931,914** — the 15,483
+difference is the null-carrier-code rows, which that CSV does not carry.
+FIX-03's base is its own analysis sample (class F passenger, departures > 0):
+I recompute **98 codes (78 unmatched + 20 refused) / 70,132 rows / 1,214,475
+departures**, matching `coverage_matching_exclusions.csv` exactly (the CSV's
+99th row is the blank-carrier-code group). Recommend the director state the
+base explicitly wherever either number appears.
+
+### 8. Findings
+
+1. **[BLOCKING] The round's headline result exists in no round-folder CSV and
+   in no committed script.** The `CARRIER_GROUP` verification — the only
+   evidence that is independent of the BLOCKED FIX-02 mapping, and the only
+   evidence that supports the word "every" — was done ad hoc. It is not in
+   `code/03_audit/03_coverage_audit.py` (which never reads `CARRIER_GROUP`),
+   not in `logs/03_coverage_audit.log` (grep for `carrier_group`: no hits),
+   and not in any of the four CSVs. Under G9 the director **cannot cite it in
+   FINDINGS at all**, and the only citable version — `coverage_audit.csv` by
+   mapped `nation` — is downstream of the one input this round has formally
+   declared unreliable. That is precisely backwards: the most decision-critical
+   claim of the round is the least verifiable artifact in it. It happens to be
+   true (section 0), but the repository cannot demonstrate it.
+2. **[BLOCKING] `n_segment_months` is not segment-months.** The deliverable
+   text is "segment-months with departures > 0"; the column is a raw row count
+   over carrier × segment × month × aircraft type. In the matched sample it is
+   **1.70×** the number of distinct `(ORIGIN, DEST, MONTH)` pairs per cell
+   (1,745,448 rows vs 1,027,021 distinct segment-months). Because coverage here
+   is binary the shares are unaffected, but the column will be read as a sample
+   size by anyone using this table, and Part 0 explicitly warns that T-100 rows
+   are aircraft-type rows.
+3. **[non-blocking] The `coverage_matching_exclusions.csv` population's own
+   coverage is not reported**, so the audit as shipped cannot support "every
+   foreign row" — only "every matched foreign row" (96.14% of rows). I verified
+   the excluded population is also uniformly zero (70,120 group-0 rows at 0.0);
+   that belongs in the CSV, not in my review.
+4. **[non-blocking] `coverage_by_corridor.csv` has no `direction` column.**
+   Both directions are pooled into each cell. The deliverable spec did not
+   require the split and the 0/1 structure means it cannot change any
+   conclusion, but Part 0 says "keep direction, never symmetrize", and a reader
+   cannot tell from the CSV that both legs are inside each row.
+5. **[non-blocking] The figure's mandatory Part 0 label is clipped in the
+   render.** `fig_coverage_heatmap.png` renders its title as "...ouching
+   international segments (* = MATCH-SENSITIVE: RU, IR — see FIX-02
+   DEGENERATE-GATE" — both ends cut off by the axes box. The string is correct
+   in the source; the PNG a human actually looks at does not show "US-touching"
+   or the closing paren.
+6. **[advisory, for the director]** The `match_sensitive` labelling is correct
+   but now nearly moot: RU and IR both sit at 0.0 coverage like every other
+   foreign nation, so the FIX-02 precision problem cannot change any FIX-03
+   conclusion. Worth saying in FINDINGS so the human does not read two
+   independent blockers as one compounding one. Conversely, the 1,816
+   foreign-group rows mapped to `US` are the FIX-02 leak that *does* touch this
+   table (it is why US coverage is 99.2-100% and not 100%).
+7. **[advisory]** `COVID_YEARS = {2020, 2021}` flags whole calendar years while
+   PROJECT.md's window is 2020-03..2021-12. Defensible at annual granularity
+   and documented in a comment; carry the coarsening into FINDINGS so FIX-05
+   does not inherit it silently at monthly granularity.
+
+### 9. Required actions (all additive; no mapping change, no re-specification)
+
+1. Add a committed script (e.g. `code/03_audit/03b_carrier_group_coverage.py`)
+   writing `rounds/round-1-t100-panel/coverage_by_carrier_group.csv` **read
+   straight from `data/raw/t100/*.csv`** (or from the parquet's verbatim
+   `CARRIER_GROUP` column, stating which), with no dependence on
+   `carrier_nation.parquet`: one row per `year × CARRIER_GROUP`, columns
+   `n_rows, n_dep_gt0, n_air_gt0, n_air_zero, n_air_null, n_ramp_gt0,
+   n_ramp_zero, n_ramp_null, n_depsched_gt0, n_mail_gt0, n_seats_gt0,
+   n_pax_gt0, n_dist_gt0, departures, is_us_carrier_group`. Assert in code that
+   `n_air_gt0 == 0` and `n_ramp_gt0 == 0` for every `CARRIER_GROUP == 0` row.
+   Values it must reproduce (I computed these independently; a mismatch is a
+   bug in the new script, not in my numbers): group 0 totals 1,133,545 rows
+   with 0 `AIR_TIME>0`, 0 `RAMP_TO_RAMP>0` and 0 nulls in either; US groups
+   total 1,523,392 `AIR_TIME>0` of 1,523,785 departures>0 rows; the
+   `CARRIER_GROUP` value set is {0,1,2,3,7} with group 7 confined to 2002-2004.
+2. In the same CSV or a companion, write the all-36-file column-availability
+   table of section 1 (share of rows > 0 by column × US/foreign group), so the
+   director can cite "foreign carriers report volume, never time" with a trace.
+3. Add the excluded population's own coverage to
+   `coverage_matching_exclusions.csv` (columns `n_air_gt0`, `share_air_gt0`,
+   `carrier_group`), so the "no exceptions" wording is citable. Expected:
+   70,120 foreign-group rows at 0.0, 12 US-group rows at 1.0.
+4. Rename `n_segment_months` → `n_rows` (or add `n_distinct_segment_months`
+   alongside) in both coverage CSVs, the .tex and the figure, and state the
+   aircraft-type multiplicity in the script docstring.
+5. Fix the figure title clipping so "US-touching international segments" is
+   fully legible in the rendered PNG (shorten, wrap, or widen the figure).
+   Part 0 makes this label mandatory on every figure.
+6. Add a `direction` column to `coverage_by_corridor.csv`, or a `directions`
+   column stating the pooling, so Part 0's direction rule is visibly honoured.
+7. Re-run both checkers and confirm byte-identical re-run of the six existing
+   artifacts (they are byte-identical today; keep them so).
+
+### 10. (b) What this means for FIX-04, FIX-05 and NEW-06
+
+**The project's headline outcome is unobservable in T-100 for every operator
+except US carriers. This is not a coverage problem to be filtered around; it is
+the absence of the dependent variable for the treated population.**
+
+- **PROJECT.md Outcome 1 (excess airborne time), Outcome 2 (asymmetric vs
+  symmetric disruption), Outcome 3 (bidirectional sum)** all require airborne
+  minutes per departure by operator nationality. For foreign operators that
+  quantity does not exist in this source, in any year, on any route.
+- **FIX-04 — build, with a hollow centre.** The panel keys and the extensive
+  margin are fully constructible for all 93 nations. But `air_time_total`,
+  `ramp_total`, `airborne_min_mean`, `ramp_min_mean` will be non-missing only
+  for `nation == US` cells: 36 of 2,249 nation-year cells, 24,356,249 of
+  40,435,177 departures (60.24%). `coverage_ok` (G6) will be True only for US
+  cells. `departures_performed`, `departures_scheduled` (US-only, see section
+  1), `distance`, `n_carriers`, `n_aircraft_types`, `fleet_share_top_type`,
+  `covid_flag` are all fine for everyone. **Recommendation: FIX-04 proceeds,
+  but its time-based columns must be documented as US-operator-only, and
+  `panel_extensive.parquet` becomes the round's most valuable output rather
+  than a side deliverable.**
+- **FIX-05 — arithmetic on an all-US sample.** Baselines, MAD, excess,
+  winsorization and the bidirectional sum are all computable and correct, but
+  only within US operators (both legs of every bidirectional pair will be US).
+  It stops being "the carrier-nation wedge" and becomes "US carriers' airborne
+  time on international routes". Worth running: it is the machinery the paper
+  needs, and it is testable on the one nation that reports.
+- **NEW-06 — the commissioned figure cannot exist.** Its stated question is
+  "on the same routes, do airlines of different nationalities show different
+  airborne times after February 2022?" Every treated foreign nation is at
+  exactly 0.0 coverage: in `coverage_by_corridor.csv`, all 79 rows for
+  {CN, IN, AE, QA, TR, KR, JP, GB, FR, DE, NL, ES} in 2019-2024 have
+  `share_air_time_valid = 0.0`, and **0 of 908 non-US corridor cells pass G6**,
+  identically on the three treated corridors and on the European placebo. Each
+  of the four corridor figures would contain exactly one line (US, coverage
+  1.000 in 2019-2024 on all four corridors), and `raw_wedge_diffs.csv`'s
+  treated-minus-control column would be NaN in every month by construction —
+  the control side is empty, not small. NEW-06 must be re-scoped or BLOCKED;
+  it must not be shipped as a set of one-line charts implying a comparison
+  that the data cannot make.
+
+**What survives, concretely, and is worth doing:**
+(i) the **extensive margin** for all nations — route entry/exit, frequency,
+seats, passengers, load factor — which is a genuine geoeconomic-response
+outcome and is fully populated for foreign carriers (`DEPARTURES_PERFORMED`
+1.000000, `SEATS` 0.840383, `PASSENGERS` 0.835525 of rows > 0);
+(ii) a **US-carrier-only, route-exposure design**: US carriers are themselves
+subject to the 2022 Russian overflight ban, so US-operated US–East Asia
+segments (141,251 departures 2019-2024, coverage 1.000) can be compared with
+US-operated US–Western Europe segments (389,436 departures, coverage 0.991)
+and US–Middle East (20,824) / US–India (10,791). This replaces identification
+off *operator nationality* with identification off *route exposure*, keeps the
+airborne-time outcome, and keeps a placebo. **It is a change to a starred
+PROJECT.md section (unit of observation) and is therefore DECISION-PENDING for
+the human, not a director call.**
+(iii) **Phase 2 (OpenSky/ADS-B) is now the only route to the operator-nationality
+wedge**, because ADS-B observes every operator's actual airborne time
+regardless of who files what with BTS. The round file's own note (iii) about
+"whether coverage on the US–East Asia corridor justifies starting the Phase-2
+extract request" is now answered in the strongest possible terms: T-100 cannot
+deliver the design at all, and the attended OpenSky pull is the project's
+critical path, not an optional enrichment.
+
+### 11. (c) What the director must put in FINDINGS, and the human's decision
+
+FINDINGS must contain, each with a `(file.csv, row)` trace once required
+action 1 lands:
+1. The carrier-group fact as the round's headline, from
+   `coverage_by_carrier_group.csv` — foreign carrier group, 36 years, zero rows
+   with airborne or ramp minutes, zero nulls — stated as **never**, not
+   "effectively never", and explicitly labelled a property of **BTS's foreign-
+   carrier reporting schedule, not of our download**, with the caveat that the
+   confirming documentation check needs an attended web session.
+2. The column-availability split (foreign carriers report volume, never time),
+   from required action 2, because it defines the entire surviving option set.
+3. G6's outcome from `coverage_excluded_cells.csv` (2,213 of 2,249 cells;
+   39.76% of departures; every failing cell exactly 0.0) and from
+   `coverage_by_corridor.csv` (0 of 908 non-US anchor-corridor cells pass;
+   all 79 anchor-nation 2019-2024 rows at 0.0, treated and placebo alike).
+4. The explicit statement that **NEW-06 as commissioned is not computable** and
+   why — one line per chart, empty control side, NaN differences.
+5. That this blocker is **independent of, and larger than, the FIX-02
+   DEGENERATE-GATE**: even a perfect carrier-nation mapping changes nothing,
+   because there is no airborne time to attribute to any nation.
+6. The FIX-02 exclusion base reconciliation of section 7, so the two departure
+   counts in this round's record are not read as a contradiction.
+
+**The decision the human must make (one choice, everything else waits on it):**
+
+> The Phase-1 outcome variable does not exist in the Phase-1 data source for
+> the population the design compares. Choose one:
+> **(A)** Re-scope Phase 1 to the extensive margin (departures, seats,
+> passengers, entry/exit) for all nations — keeps the cross-nationality
+> comparison, loses "excess airborne time";
+> **(B)** Re-scope Phase 1 to US-carrier-only route-exposure DiD — keeps
+> airborne time and the placebo, loses operator-nationality identification;
+> **(C)** Accelerate Phase 2: commission the attended OpenSky pull now and make
+> ADS-B the primary source for the wedge, with T-100 demoted to a volume/
+> extensive-margin companion;
+> **(D)** Find a source that reports foreign-carrier block or airborne time
+> (Eurocontrol, OAG/Cirium schedules-and-actuals, commercial OOOI).
+>
+> (A), (B) and (C) all touch starred PROJECT.md sections and belong in
+> DECISIONS.md. My reading: (C) is the design the project was written for and
+> (A) is the honest interim deliverable; (B) is a different paper.
+
+No agent should proceed to FIX-04, FIX-05 or NEW-06 as currently written
+without this ruling. Building FIX-04/FIX-05 in their US-only form is harmless
+and useful and may continue under the existing reporting embargo; NEW-06
+should be held.
+
+**VERDICT: FAIL**
+
+---
+
+## FIX-03 (cycle 2) review — 2026-09-02 00:51 UTC
+
+Focused re-review of the six required actions from the cycle-1 FAIL. Cycle-1
+substantive results are not re-litigated; I re-ran them only as a determinism
+and regression check, and they are unchanged (byte-identical).
+
+### 1. Every value I specified reproduces — exactly, from the raw CSVs
+
+I rebuilt the whole year x CARRIER_GROUP table myself from
+`data/raw/t100/*.csv` (36 files, 2,662,470 rows) with my own read path, then
+outer-merged against `coverage_by_carrier_group.csv`: **147 rows, all `both`,
+0 left_only, 0 right_only, max abs difference 0.0 on every one of the 15
+value columns** (`n_rows, n_dep_gt0, n_air_gt0, n_air_zero, n_air_null,
+n_ramp_gt0, n_ramp_zero, n_ramp_null, n_depsched_gt0, n_mail_gt0,
+n_seats_gt0, n_pax_gt0, n_dist_gt0, departures, is_us_carrier_group`).
+
+Each specified value, recomputed:
+
+- `CARRIER_GROUP` set = **{0, 1, 2, 3, 7}**, zero nulls; group 7 = **{2002,
+  2003, 2004}**, 382 rows. Reproduced in the CSV exactly.
+- Group 0: **1,133,545 rows; `AIR_TIME>0` = 0; `RAMP_TO_RAMP>0` = 0;
+  `AIR_TIME` nulls = 0; `RAMP_TO_RAMP` nulls = 0; `n_air_zero` = 1,133,545.**
+  (`coverage_by_carrier_group.csv`, the 36 rows with `carrier_group==0`.)
+- Excluded population: `coverage_matching_exclusions.csv` now splits by
+  `CARRIER_GROUP` — **70,120 group-0 rows (99 codes), `n_air_gt0` = 0,
+  `share_air_gt0` = 0.0**; **12 US-group rows (8 in group 1, 4 in group 2),
+  `share_air_gt0` = 1.0**. Exactly the values I specified. Totals still
+  reconcile: 70,132 rows / 1,214,475 departures.
+- Column availability, `coverage_column_availability.csv`, 20 rows: every
+  `share_gt0` equals `n_gt0/n_rows` to 1.1e-16 and every value reproduces my
+  independent count. Foreign (n_rows 1,133,545): AIR_TIME 0.0, RAMP_TO_RAMP
+  0.0, DEPARTURES_SCHEDULED 0.0, MAIL 0.0, DEPARTURES_PERFORMED 1.0, DISTANCE
+  1.0, SEATS 0.8403830461, PASSENGERS 0.8355248358, PAYLOAD 0.8095443939,
+  FREIGHT 0.6519176566. US (n_rows 1,528,925): AIR_TIME 0.9963811175,
+  RAMP_TO_RAMP 0.9966316203, DEPARTURES_SCHEDULED 0.7162411498, MAIL
+  0.2011923410.
+
+**The assertions are real and they raise.** Mutation-tested, in an isolated
+`/tmp` root (no repo file modified):
+- flipping the assertion's target group from 0 to 1 (a group that *does*
+  report time) → script logs `ASSERTION FAILED ... in 36 year-rows` and
+  **exits 1**;
+- narrowing `US_GROUP_CODES` to {1,2,3} so group 7 becomes unknown → logs
+  `Unexpected CARRIER_GROUP values found: [7] — refusing to guess` and
+  **exits 1**.
+Carried-forward advisory (same class as FIX-01's): the CSV is written *before*
+the assertion returns 1, so a future failing run leaves a stale artifact on
+disk next to an exit-1 log.
+
+### 2. The 1,523,392 / 1,523,785 / 1,523,296 "discrepancy" — the implementer's
+### account is CORRECT, and my cycle-1 phrasing was the thing that was wrong
+
+Recomputed from the raw CSVs. All three are real, different, correct numbers
+with three different denominators:
+
+| number | what it is | where |
+|---|---|---|
+| 1,528,925 | US-group rows, all of them | `coverage_column_availability.csv`, rows `(us, *)`, `n_rows` |
+| 1,523,785 | US-group rows with `DEPARTURES_PERFORMED>0` | `coverage_column_availability.csv`, row `(us, DEPARTURES_PERFORMED)`, `n_gt0`; also `coverage_by_carrier_group.csv`, `n_dep_gt0` summed over US rows |
+| 1,523,392 | US-group rows with `AIR_TIME>0`, **unconditional** | `coverage_column_availability.csv`, row `(us, AIR_TIME)`, `n_gt0` |
+| 1,523,296 | US-group rows with `AIR_TIME>0` **and** `DEPARTURES_PERFORMED>0` | log only |
+
+My cycle-1 sentence "1,523,392 `AIR_TIME>0` of 1,523,785 departures>0 rows"
+silently mixed an unconditional numerator with a conditional denominator. The
+implementer was right to refuse to force a match; **no value was adjusted, and
+the 96-row gap is real** (96 US-group rows carry `AIR_TIME>0` with
+`DEPARTURES_PERFORMED==0`). This is correct bookkeeping, not a discrepancy,
+and I record it as such.
+
+The CSVs state their denominators unambiguously: in both files every count
+column is a count over the `n_rows` in its **own row**, and no column name or
+value implies a departures-conditional base. A reader cannot mistake one for
+another.
+
+One residue, non-blocking but binding on the director: **1,523,296 exists only
+in `logs/03b_carrier_group_coverage.log`, in no CSV**, so under G9 it is NOT
+citable and neither is "99.97% of departures>0 rows". The citable US contrast
+is the unconditional 0.9963811175 from `coverage_column_availability.csv`, row
+`(us, AIR_TIME)`. Use that one.
+
+### 3. G9 is genuinely solved — `coverage_by_carrier_group.csv` stands alone
+
+Proved, not inspected. I copied the script to an isolated root containing
+**only** `data/raw/t100` (symlink), `code/utils.py`, and empty output dirs —
+**no `data/interim/`, no `t100_raw.parquet`, no `carrier_nation.parquet`, no
+FIX-02 CSV**. It ran to completion and wrote a `coverage_by_carrier_group.csv`
+whose md5 (`81f67452c12f73458086a76be4ba69e3`) is **identical to the committed
+round-folder file**. The headline is therefore provable from raw BTS text with
+zero dependence on the BLOCKED FIX-02 mapping, and on FIX-01's parquet only
+coincidentally. Cycle-1's blocking finding 1 is fully cured.
+
+### 4. Actions 4, 5, 6
+
+- **Action 4 (rename): met.** `n_segment_months` appears nowhere in `code/`,
+  `rounds/`, `paper/`, `slides/`, `human-readable/` (repo-wide grep; only
+  historical prose in STATUS.md / this file). `coverage_audit.csv` and
+  `coverage_by_corridor.csv` both carry `n_rows`; the figure and .tex carry no
+  such column. The multiplicity caveat is in `03_coverage_audit.py`'s
+  docstring (lines 29-35) and its number is right: matched-sample `n_rows` sums
+  to **1,745,448**, and I reproduce **1,027,021** distinct
+  `(nation_iso2, YEAR, ORIGIN, DEST, MONTH)` combinations — ratio 1.6996.
+  *Two wording residues, carried forward, not blocking:* (i) the docstring
+  states the key as "(ORIGIN, DEST, MONTH)" without the nation-year qualifier —
+  unqualified, that count is 81,413, and `(ORIGIN, DEST, YEAR, MONTH)` is
+  839,612, so the stated key does not produce the stated number; (ii)
+  `tables/tab_coverage_audit.tex`'s caption still defines "cov." as "share of
+  passenger **segment-months** with AIR_TIME > 0" (twice, incl. the home0
+  gloss), which is the exact mislabel the rename removed from the CSVs. Shares
+  are unaffected (coverage is binary 0.0/99.8), so no number changes — but this
+  .tex must not enter `paper/` until the caption says rows.
+- **Action 5 (title clipping): met.** I inspected the rendered PNG, not the
+  source string. The title now wraps to three lines and **"US-touching
+  international segments" is fully legible**, as is the closing paren of
+  "(* = MATCH-SENSITIVE: RU, IR -- FIX-02 DEGENERATE-GATE)". Pixel scan of the
+  heatmap body finds exactly **one** green band (y 96-116 = the US row) and no
+  other; consistent with `coverage_audit.csv`, where the 36 cells with
+  `share_air_time_valid > 0` are all `nation == US` (min 0.9923, max 1.0).
+- **Action 6 (directions): met.** `coverage_by_corridor.csv` has a
+  `directions` column, single value in all 1,037 rows:
+  `"both (US-origin outbound + US-destination inbound pooled)"`.
+
+### 5. Determinism, gates, checkers
+
+- **Determinism verified by me, not accepted from the log.** md5'd all 8
+  artifacts, re-ran `03_coverage_audit.py` (exit 0) and
+  `03b_carrier_group_coverage.py` (exit 0), `md5sum -c`: **8/8 OK**
+  (4 pre-existing CSVs + 2 new CSVs + .tex + .png). The 03b CSV additionally
+  reproduces byte-identically from a different filesystem root (section 3).
+- `python code/99_validate_outputs.py` → `18 CSVs scanned, 0 FAIL, 0 WARN`,
+  **exit 0**. 18 = every CSV in `rounds/round-1-t100-panel/`; both new files
+  are inside the active round folder and inside the directory-wide scan. No
+  result CSV was written outside the round folder.
+- `python code/98_check_trino_usage.py` → `0 FAIL`, **exit 0**. No
+  `logs/opensky_queries.log` and none required: no OpenSky/Trino/network access
+  this round; `03b` imports only pandas and `utils`, and reads only
+  `data/raw/t100/`. `data/raw/` unmodified (`git status` clean under it).
+- **Gates. G1-G4:** N/A — no regression, no p-value/SE/coef column exists in
+  any of the 18 CSVs (checked every file, not a manifest). No degenerate-
+  inference pathology is even possible this round. **G5: PASS** — swept every
+  `share*/rate*/precision*` column in all 18 CSVs; zero values outside [0,1];
+  the three-way air/ramp shares sum to 1. **G6: unchanged and correct** — set
+  equality re-verified, |cells with `share_air_time_valid < 0.50`| = 2,213 =
+  |`coverage_excluded_cells.csv`|, **symmetric difference empty**; max
+  `share_air_time_valid` among excluded = **0.0**; departures-weighted failure
+  share **0.3976470290**; **0 of 908 non-US corridor cells pass**. **G7:**
+  unchanged, still BLOCKED-NEEDS-HUMAN / DEGENERATE-GATE; FIX-03 complies with
+  the matched-methods restriction. **G8:** N/A. **G9: NOW MET** — see
+  section 3.
+- No all-null columns anywhere except the two known FIX-01 note columns in
+  `ingest_rowcounts.csv`. Zero empty cells in the two new CSVs; the three blank
+  `UNIQUE_CARRIER` cells in `coverage_matching_exclusions.csv` are the
+  `null_carrier_code` category and are meaningful, not missing.
+- No fancy estimator: this task is counts and shares. Rule-12 benchmark
+  requirement is not engaged.
+- No hand-typed number in the .tex (auto-generated header line present), the
+  figure, or the CSVs. **One violation to clean up:** STATUS.md's FIX-03
+  cycle-2 entry contains the typed phrase "off by 96 rows" — a result number in
+  a state file, which the conventions forbid without a CSV trace, and 96 is in
+  no CSV. One-line edit; not worth a cycle, but fix it at round close.
+
+### 6. Findings
+
+1. **[cured]** Cycle-1 finding 1 (headline not citable under G9) is fully
+   resolved and proven mapping-independent by isolated-root execution.
+2. **[cured]** Cycle-1 findings 2, 3, 4, 5 — rename, excluded-population
+   coverage, `directions`, figure title — all met and verified in the rendered
+   artifact where relevant.
+3. **[carry-forward, blocks paper use only]** `tables/tab_coverage_audit.tex`
+   caption still calls the denominator "segment-months" in two places; the unit
+   is rows (1.70x multiplicity). Fix before this table is copied into `paper/`.
+4. **[carry-forward]** `03_coverage_audit.py` docstring states the
+   distinct-segment-month key without the nation-year qualifier; the number
+   1,027,021 is right, the stated key is not.
+5. **[binding on the director]** 1,523,296 and any "99.97%" phrasing are
+   log-only and NOT citable under G9. Cite 0.9963811175 instead.
+6. **[advisory]** `code/03_audit/` and all 8 FIX-03 artifacts are still
+   untracked; the coordinator must commit them (same handoff as FIX-02's
+   `code/02_build/`).
+7. **[advisory]** STATUS.md "off by 96 rows" — typed result number, no trace.
+8. **[unchanged, for the human]** `coverage_by_carrier_group.csv` /
+   `coverage_column_availability.csv` cover **all rows, all service classes**;
+   `coverage_audit.csv` covers **class-F passenger, departures>0, matched
+   carriers**. Both are correct; FINDINGS must name the sample beside every
+   number, because the two bases differ by ~900k rows.
+
+### 7. HEADLINE BLOCK for ROUND_01_FINDINGS.md (traced, G9-compliant)
+
+> **Foreign carriers never report airborne time in this T-100 extract — in any
+> of the 36 years, in any row.** From BTS's own `CARRIER_GROUP` field read
+> straight from the 36 raw year files, with no dependence on this project's
+> carrier-nation mapping (which is BLOCKED):
+>
+> - Foreign carrier group (`CARRIER_GROUP == 0`): **1,133,545 rows**, of which
+>   **0** have `AIR_TIME > 0` and **0** have `RAMP_TO_RAMP > 0`; **0** are null
+>   in either field — every value is a literal zero.
+>   *(coverage_by_carrier_group.csv, the 36 rows with `carrier_group == 0`;
+>   columns `n_rows`, `n_air_gt0`, `n_ramp_gt0`, `n_air_null`, `n_ramp_null`,
+>   summed. All service classes, all rows.)*
+> - Foreign carriers report **volume, never time**: `DEPARTURES_PERFORMED`
+>   share > 0 = **1.0**, `DISTANCE` **1.0**, `SEATS` **0.8403830461**,
+>   `PASSENGERS` **0.8355248358**, `PAYLOAD` **0.8095443939**, `FREIGHT`
+>   **0.6519176566**; while `AIR_TIME` **0.0**, `RAMP_TO_RAMP` **0.0**,
+>   `DEPARTURES_SCHEDULED` **0.0**, `MAIL` **0.0**.
+>   *(coverage_column_availability.csv, rows `(foreign, <column>)`, column
+>   `share_gt0`; denominator `n_rows` = 1,133,545 in every one of those rows.)*
+> - US carriers, same files, same columns: `AIR_TIME` share > 0 =
+>   **0.9963811175** (1,523,392 of 1,528,925 rows).
+>   *(coverage_column_availability.csv, row `(us, AIR_TIME)`, columns `n_gt0`,
+>   `n_rows`, `share_gt0`.)*
+> - The `CARRIER_GROUP` values present are **{0, 1, 2, 3, 7}**; group 7 appears
+>   only in **2002-2004** (382 rows).
+>   *(coverage_by_carrier_group.csv, columns `carrier_group`, `year`,
+>   `n_rows`.)*
+> - It is **not** an artifact of the carrier-nation mapping's exclusions: of the
+>   rows FIX-03 drops as unmatched/refused, the **70,120** foreign-group rows
+>   have `share_air_gt0` = **0.0** and the **12** US-group rows have **1.0**.
+>   *(coverage_matching_exclusions.csv, rows grouped by `CARRIER_GROUP`;
+>   columns `n_rows`, `n_air_gt0`, `share_air_gt0`.)*
+> - In the headline analysis sample (class-F passenger, departures > 0, matched
+>   carriers): **2,213 of 2,249** operator-nation x year cells fail G6, every
+>   one at `share_air_time_valid` **exactly 0.0**; the **36** cells with any
+>   coverage are all `nation == US` (0.9923-1.0). Departures-weighted, the
+>   failing cells are **0.3976470290** of all departures.
+>   *(coverage_audit.csv, columns `nation`, `year`, `share_air_time_valid`,
+>   `dep_total`, `gate_g6_pass`; coverage_excluded_cells.csv, 2,213 rows.)*
+> - On the NEW-06 anchor corridors: **0 of 908** non-US corridor cells pass G6 —
+>   identically on the three treated corridors and on the European placebo.
+>   *(coverage_by_corridor.csv, rows with `nation != "US"`, column
+>   `gate_g6_pass`; both directions pooled, see column `directions`.)*
+>
+> **Interpretation to state plainly:** this is BTS's foreign-carrier reporting
+> schedule (T-100(f) collects volume, not block/airborne time), not a defect of
+> our download — the columns are in every file's header and are full for US
+> carriers in those same files, the export writes zeros rather than blanks, and
+> the absent set is exactly {airborne time, ramp-to-ramp, scheduled departures,
+> mail} for 36 consecutive years without one exception. Confirming this against
+> BTS's published T-100(f) data-element list needs an attended web session; it
+> is a confirmation step, not a doubt.
+> **Consequence:** this blocker is independent of, and larger than, the FIX-02
+> DEGENERATE-GATE. A perfect carrier-nation mapping would change nothing,
+> because there is no airborne time to attribute to any nation.
+
+### 8. Ruling for FIX-04, FIX-05, NEW-06 (restated, still binding)
+
+Two independent constraints stack: the **FIX-02 embargo** (G7
+BLOCKED-NEEDS-HUMAN — build allowed, nation-level reporting not) and the
+**FIX-03 fact** (the outcome variable does not exist for any non-US operator).
+
+- **FIX-04 — MAY BUILD, MAY NOT REPORT nation-level numbers.** Matched
+  carriers only, `icao` tier dropped, precision flags carried. Panel keys and
+  the extensive margin (`departures_performed`, `distance`, `seats`,
+  `passengers`, `n_carriers`, `n_aircraft_types`, `covid_flag`) are valid for
+  all 93 nations. **Hard requirement:** every airborne/ramp-derived column must
+  be constructed as **missing** for non-US cells and must carry an explicit
+  availability flag. The source zero-fills, so any mean, sum or ratio taken
+  over raw `AIR_TIME` will silently report foreign flights as taking zero
+  minutes — that is the single most dangerous error available in this round and
+  I will look for it first. `DEPARTURES_SCHEDULED` is US-only too (share 0.0
+  foreign); do not build a load/completion-factor variable on it for foreign
+  cells. Must aggregate over aircraft types rather than assume cell-key
+  uniqueness (FIX-01 advisory 4).
+- **FIX-05 — MAY BUILD, under the same embargo, as an explicitly all-US
+  computation.** Baselines, MAD, excess and the bidirectional sum are all
+  computable, but every surviving cell and both legs of every bidirectional
+  pair are US operators. It must be labelled "US carriers' airborne time on
+  US-touching international segments", never "the carrier-nation wedge". G8
+  assertions (no COVID month in any baseline; >= 2 obs per baseline) must be in
+  code and must raise. Note the COVID coarsening carried from FIX-03
+  (`COVID_YEARS = {2020, 2021}` vs PROJECT.md's 2020-03..2021-12) — at monthly
+  granularity FIX-05 must use the true window, not inherit the annual one.
+- **NEW-06 — MAY NOT SHIP AS COMMISSIONED.** The airborne-time wedge figure is
+  not computable: 0 of 908 non-US corridor cells pass G6, so each corridor chart
+  would carry exactly one line (US) and the treated-minus-control column would
+  be NaN in every month by construction — the control side is empty, not small.
+  Do not ship one-line charts implying a comparison the data cannot make.
+  It **may** be re-scoped to an **extensive-margin** wedge (departures, seats,
+  passengers, entry/exit), which is fully populated for foreign carriers — but
+  that changes the outcome variable, so it requires a written director
+  commission in the round file naming the new outcome and its ex-ante
+  rationale, must ship the raw-means benchmark, must ship a
+  precision-excluded version alongside, and corridor 1 / ICN may be computed
+  but not reported while G7 is blocked. Any airborne-time version stays
+  BLOCKED.
+- **Unchanged and above all three:** the human's (A) extensive-margin re-scope
+  / (B) US-only route-exposure DiD / (C) accelerate OpenSky / (D) new data
+  source decision is still open. All touch starred PROJECT.md sections. No
+  agent may pick one; FIX-04 and FIX-05 building in the forms above is
+  compatible with every branch and does not pre-commit the choice.
+
+**VERDICT: PASS**
