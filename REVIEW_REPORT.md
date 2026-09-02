@@ -2860,3 +2860,772 @@ need not wait. Terms, restated and unchanged from the FIX-03 ruling:
    `figures/fig_excess_distribution.png` must be rebuilt from the 01:36 panel;
    no number in the existing versions may be cited, and they should be
    quarantined rather than left to be counted green by the validator.
+
+## FIX-05 review — 2026-09-02 02:14 UTC
+
+**Scope.** Full adversarial review of FIX-05 (`code/05_outcomes/05_build_excess.py`
+→ `data/interim/panel_excess.parquet`; `desc_outcomes.csv`,
+`baseline_failures.csv`, `outcome_data_quality_exclusions.csv`,
+`figures/fig_excess_distribution.png`), plus the provenance question (were the
+VOID artifacts really regenerated against the cycle-2 panel), plus the final
+ruling on NEW-06. No analysis code was modified by the overseer; all mutation
+tests ran on redirected copies in `/tmp/f05a|b|c`.
+
+### Provenance (independently confirmed, not taken on mtime alone)
+
+`panel_excess.parquet` carries all 29 cycle-2 panel columns including
+`departures_time_eligible`, `departures_airborne_eligible` and
+`departures_non_reporting`. Sorted on the cell key, **every one of the 29
+inherited columns is identical to `panel_monthly.parquet` — 0 value diffs, 0
+NaN-pattern diffs, keys equal row for row** (1,026,729 rows both sides). The
+seven FIX-05 columns are additive. No void artifact survives: the four
+round-folder deliverables are byte-identical to a clean isolated re-run against
+the 01:57:59 panel (md5 below), and `legacy_quarantine/` does not exist because
+the void files were overwritten in place rather than moved. The one place the
+void run does survive is `logs/05_build_excess.log` (advisory A2).
+
+### Checks run (every number recomputed by the overseer from the parquets)
+
+**Full independent rebuild of the outcome block.** I re-derived the screen, the
+candidate pool, `baseline_n`, `baseline_med`, `baseline_mad`, `excess_min`,
+`excess_min_w`, `bidir_sum` from `panel_monthly.parquet` with my own code and
+compared against the shipped parquet: **max abs diff 0.0 and 0 NaN-pattern
+mismatches on every one of the seven columns**. Reproduced exactly: valid
+measurement **515,875 / 1,026,729 = 0.5024**; implied-speed flags **328** rows
+panel-wide, **141** with `cell_ok`; `distance == 0` **50** rows, **2** with
+`cell_ok` (141 + 2 = 143, reconciling with my FIX-04 count); baseline failures
+**122,727 / 515,875 = 0.23789**; `excess_min` non-null **393,148**; winsorized
+**11,040**; `bidir_sum` non-null **389,446 / 1,026,729 = 0.3793**;
+`baseline_mad == 0` **1,629**. Every implementer claim in the hand-off is
+arithmetically correct except the baseline-failure narrative (finding 1).
+
+**VERIFY 1 — baseline_med hand-recomputed on randomly drawn cells (seed
+20260902).** `MIA→SDQ 2005-05`: candidates 103.5806 / 103.2747 / 104.0968 →
+median **103.5806**, shipped 103.5806, excess −0.5914 = shipped. `IAH→MTY
+2007-07`: 66.7148 / 66.8669 / 66.2810 → **66.7148** = shipped, excess 3.3113.
+`CDG→ORD 1992-09`: 532.0333 / 546.0690 / (1989 absent) → n=2, **539.0511** =
+shipped, excess −4.7845. `UVF→MIA 2009-03`: 203.7742 / 211.3548 / 207.9355 →
+**207.9355** = shipped. All four match to full precision.
+
+**VERIFY 2.** Rows with `baseline_n < 2` and non-null `excess_min`: **0**. Rows
+with `baseline_n < 2` and non-null `baseline_med`: **0**.
+
+**VERIFY 3 (winsorization), 3 routes of my own choosing plus the implementer's
+2.** `JFK→LHR` n=388 p1=−19.8241 p99=24.4623 = observed min/max of
+`excess_min_w`; `MIA→GRU` n=374 −16.9332 / 12.7289; `ORD→NRT` n=348 −21.8591 /
+22.2611; `LHR→JFK` n=387 **−27.0951 / 24.3269** (implementer's figure
+confirmed); `PTY→MIA` n=382 **−6.8020 / 6.5811** (confirmed). Recomputing the
+per-group clip over all 2,910 route groups reproduces `excess_min_w` at **max
+abs diff 0.0**. Clipping is applied strictly after the screen (screened cells
+carry `excess_min = NaN` and never enter a quantile). Degenerate cutoffs: **55
+groups have p1 == p99, covering 75 rows (0.019% of non-null excess)**, and all
+are single-observation or constant-valued groups, so the clip is a no-op there
+— no group is collapsed to a point. Groups with n ≤ 5 hold **691 rows
+(0.176%)**.
+
+**Trailing window / look-ahead.** The candidate pool is built by merging
+`year − k` for k ∈ {1,2,3} at the same (origin, dest, nation, calendar month).
+It is strictly backward-looking; there is no centred or forward term, and the
+merge is a left join on a key I verified unique among valid cells (**0
+duplicates**). Confirmed on data, not on code: `2021-01` targets reach
+`baseline_n == 3` (888 cells) while `2021-03` targets top out at **2** — i.e.
+2020-01 is usable and 2020-03 is not.
+
+**G8 by mutation, in an isolated root.** (a) Deleting the COVID-nulling line
+→ `RuntimeError: G8 VIOLATED: 18916 baseline candidates at lag 1 years fall
+inside the COVID window ((2020, 3)..(2021, 12))`, **exit 1**, no parquet, no
+desc/baseline CSV, no figure written. (b) Weakening `ok2` to `baseline_n >= 1`
+→ `RuntimeError: G8 VIOLATED: a baseline_med was computed with < 2
+observations.`, **exit 1**, same absence of artifacts. (c) The window is
+monthly, not an annual coarsening: `_covid_flag` returns True on exactly **22**
+month cells, first (2020, 3), last (2021, 12); 2020-01/02 False, 2020-03 True,
+2021-12 True, 2022-01 False.
+
+**Screen applies to both roles.** Screened cells are removed from the
+baseline-contributor pool, not only from the target role — e.g. `FLL→MHH
+2019-02` draws its baseline from 2017 (47.8085) and 2016 (46.9423) only, with
+the 2018 value of 365.72 min excluded; shipped `baseline_med` **47.375409** =
+my hand median. `CUN→MCI 2007-05` and `FLL→GHC 2020-12` fall to
+`baseline_n == 1` (excess NaN) for the same reason. The `distance == 0`
+carve-out is correct rather than convenient: both `cell_ok` cases are
+`SWL↔WFB 2002-04` (11 and 13 departures, 24 min, 0 miles) — a Puget Sound
+seaplane hop where the whole-mile DISTANCE field rounds to 0, so 0 mph is
+undefined, not slow. Every screened row is documented one-per-row in
+`outcome_data_quality_exclusions.csv`: **328 + 2 + 80 = 410 rows**, counts
+matching the panel exactly. Docstring examples verified against the panel:
+`YGE→LKE 2025-10` (1 dep, 207 mi, airborne 9999.0, ramp 10004.0, `cell_ok`
+False, flagged) and `NSB→FLL 2018-02` (88 dep, 59 mi, 2,433 min → 1.45 mph,
+flagged and excluded).
+
+**desc_outcomes.csv.** 20 rows = 4 outcomes × (4 decades + `all`), with
+`formula` and `sample` as text and all seven moments. Every moment on all four
+`decade == all` rows and on the 2020s `excess_min` row reproduces exactly from
+the parquet (e.g. `excess_min` all: n 393,148, p1 −21.2319, p50 0.011360, p99
+21.2533, mean 0.056855, sd 8.851467).
+
+**Labelling.** `SAMPLE_LABEL` = "US carriers' airborne time on US-touching
+international segments" appears on all 20 rows of `desc_outcomes.csv`, all 36
+rows of `baseline_failures.csv` (whose `nation` column is `US` and only `US`),
+and in the figure suptitle, which renders **fully unclipped** in the PNG. The
+script's only occurrence of "wedge" is the docstring clause forbidding it. No
+deliverable implies a cross-national comparison.
+
+**Determinism / isolation.** A clean re-run in `/tmp/f05a` (no `data/raw/`, no
+network, no Trino) exits 0 and produces `panel_excess.parquet`,
+`desc_outcomes.csv`, `baseline_failures.csv`,
+`outcome_data_quality_exclusions.csv` and `fig_excess_distribution.png`
+**byte-identical (md5) to the shipped artifacts**.
+`python code/99_validate_outputs.py` → exit **0** ("24 CSVs scanned, 0 FAIL, 0
+WARN"); `python code/98_check_trino_usage.py` → exit **0**. All four
+deliverables are inside `rounds/round-1-t100-panel/` and inside the validator's
+directory-wide scan.
+
+### Gate status
+
+- **G1** — PASS. 0 null keys, 0 duplicate keys in `panel_excess.parquet`; no
+  empty cells in `desc_outcomes.csv` or `baseline_failures.csv`; the 2 blank
+  cells in `outcome_data_quality_exclusions.csv` are the `distance_zero`
+  rows' inapplicable count columns, schema not missingness.
+- **G2/G3/G4** — N/A. FIX-05 produces no coefficient, SE or p-value.
+- **G5** — PASS. `baseline_fail_share` ∈ [0, 1] on all 36 rows (min 0.0965,
+  max 1.0); validator's bounded-column scan clean.
+- **G6** — inherited PASS (cells enter through `cell_ok`, which carries
+  `coverage_ok`); the all-US consequence is asserted at runtime.
+- **G7** — embargo intact: every valid cell is `nation == 'US'`, no
+  nation-level or cross-national number is produced.
+- **G8** — **PASS, and mutation-proven** (both assertions raise and exit 1; the
+  window is the correct 22-month monthly window). The count failing the ≥ 2
+  rule is written to `baseline_failures.csv`, as commissioned.
+- **G9** — **PARTIAL, see finding 3.** `11,040` winsorized rows, `1,629`
+  zero-MAD rows, the per-route winsorization cutoffs, and the month-resolution
+  collapse of the excess series in 2022-03…2023-12 exist only in a log or only
+  in the parquet — none is citable from a round-folder CSV.
+
+### Findings — BLOCKING
+
+1. **The excess series is empty for the entire post-event window
+   2022-03 … 2023-12, and no deliverable says so.** Recomputed from
+   `panel_excess.parquet`: non-null `excess_min` by month is 1,156 (2022-01),
+   1,162 (2022-02), then **0 in every one of 2022-03 … 2022-12 and 0 in every
+   one of 2023-01 … 2023-12**, recovering to 15,712 in 2024 and 17,253 in 2025.
+   This is mechanical, not a bug — with lags of 1/2/3 years and the 22 COVID
+   months barred, a 2022-05 target has only 2019-05 left and a 2023-05 target
+   only 2022-05 — and the rule must NOT be relaxed (that would be a rule-11
+   DECISION-PENDING for the human, not an agent fix). But the consequences are
+   currently invisible and one of them is actively misleading:
+   (a) `figures/fig_excess_distribution.png`, right panel, is titled **"2022
+   only (n=2,318)"** when all 2,318 cells are January–February 2022, i.e.
+   entirely *before* the February 2022 event this paper is about. A seminar
+   reader takes that panel for the treatment year.
+   (b) `baseline_failures.csv` reports this only at annual resolution (rows
+   `US,2022` share **0.8684374822634656** and `US,2023` share **0.875**), so
+   the "which months" — the only part that matters for the design — has no CSV
+   trace and cannot enter FINDINGS under G9.
+   (c) The implementer's own hand-off summary to this reviewer described the
+   file as "100% failure in 1990–91 …, then ~17–26%/yr", which is contradicted
+   by the two rows in that same CSV that decide whether the round's headline
+   outcome exists during the treatment window. Prose-vs-CSV misdescription of
+   exactly this kind is what these reviews exist to catch.
+   *Required (all additive; no shipped number may change):* retitle the right
+   panel to name the Jan–Feb restriction and the reason; add month-resolution
+   (or window-resolution) rows to `baseline_failures.csv` so
+   "0 computable excess cells, 2022-03 … 2023-12" is a `(file.csv, row)` trace;
+   state the blackout in the FIX-05 FINDINGS block as the round's principal
+   limitation for any 2022 event design.
+
+2. **Winsorization does not swallow the measurement contamination, and the
+   surviving cells dominate the mean.** With the screen at 50 mph, **1,171
+   cells with non-null `excess_min_w` still imply a ground speed below 150 mph**
+   (376 below 100 mph) — physically impossible for the scheduled jet service
+   in this sample, whose implied-speed distribution is p1 195.9 / p50 467.3 /
+   p99 588.8 mph. Per-route 1/99 clipping leaves them: the largest shipped
+   `excess_min_w` is **+968.195** at `GCM→CVG 1999-06` (4 departures, 1,375
+   miles, 1,200 min/departure = **68.75 mph**), with `CVG↔GCM` 1998–2000
+   supplying six of the twelve largest values, and `excess_min_w` ranges
+   **[−281.501, +968.195]**. Those 1,171 cells are 0.30% of the sample but
+   carry **58.7% of the sum of `excess_min_w`**: dropping them moves the pooled
+   mean from **0.03474** to **0.01441** (−59%); dropping only the sub-100 mph
+   cells gives 0.01269. The screen is also one-sided — 48 valid cells imply
+   **> 700 mph** (max **11,730 mph**), an under-reported AIR_TIME that reads as
+   a large *negative* excess, i.e. a spurious speed-up, and nothing screens it.
+   Every mean-based statistic downstream (NEW-06's corridor means, any DiD on
+   `excess_min_w`) inherits this. *Required:* do NOT silently move the
+   threshold (rate-changing without commission is prohibited); write the
+   sensitivity to a round CSV — pooled and by-decade mean/p1/p99 of
+   `excess_min_w` under screens at 50 / 100 / 150 / 200 mph with the cell
+   counts, plus a symmetric upper-speed diagnostic count — so the director and
+   the human can see the fragility and rule on the threshold.
+
+3. **VERIFY item 3 is unmet in the letter, and two headline construction counts
+   are log-only (G9).** The round file's VERIFY reads "the winsorization
+   cutoffs **in `desc_outcomes.csv`** match the p1/p99 of the raw excess within
+   route × direction". `desc_outcomes.csv` contains no cutoff column at all —
+   only pooled/by-decade moments — so the stated check is not performable
+   against the deliverable; I could only perform it against
+   `panel_excess.parquet`. Likewise `11,040` winsorized rows and `1,629`
+   zero-MAD rows appear only in `logs/05_build_excess.log`. *Required:* add the
+   per-route cutoffs (a small CSV keyed by origin × dest × nation with n, p1,
+   p99, n_clipped is the natural form) or at minimum a cutoffs block in
+   `desc_outcomes.csv`, and put the winsorized and zero-MAD counts in a CSV.
+
+4. **`excess_z` as shipped is a degenerate statistic and `desc_outcomes.csv`
+   presents it without a caveat.** Its MAD comes from at most three candidates,
+   so it is near-zero at will: over 391,519 non-null values the sd is
+   **205.9477**, p1 **−71.7730**, p99 **83.9958** (`desc_outcomes.csv`,
+   outcome `excess_z`, decade `all`), the range is **[−32,315.13,
+   +87,010.00]**, and **5,904 cells exceed |z| = 100** (429 exceed 1,000). A
+   quantity labelled a z-score whose 99th percentile is 84 will be read as
+   evidence of enormous anomalies; it is an artifact of a 2–3 point MAD.
+   *Required:* say so in the `formula` text for `excess_z` and add the
+   |z| > 100 count to a CSV, or mark the column NOT-FOR-USE pending a
+   director-commissioned dispersion measure. Do not re-specify it here.
+
+### Findings — ADVISORY (not blocking, carry forward)
+
+A1. `logs/05_build_excess.log` is committed (in 57d3fd8) and contains **two
+    VOID runs** (01:17:22 and 01:17:50) carrying superseded numbers — 516,032
+    valid cells, 122,787 failures, 393,245 non-null excess, 389,540 bidir, and
+    a "> 1440 min = 24h" screen that no longer exists — with no VOID marker in
+    the file. Same class as FIX-04 finding 3. Truncate and re-run once (the
+    artifacts are proven byte-identical) or annotate.
+A2. **Write-before-assert persists.** In the mutation runs, `RuntimeError` on
+    G8 left `outcome_data_quality_exclusions.csv` (76,906 bytes) on disk in the
+    scratch root because it is written at line 244, before the assertions at
+    lines 302–309. The parquet, both other CSVs and the figure are correctly
+    gated. Third round of this pattern (FIX-01, FIX-04, FIX-05).
+A3. `outcome_data_quality_exclusions.csv` is the one FIX-05 deliverable with no
+    `sample` label column; add it for consistency with the all-US labelling
+    ruling.
+A4. Winsorization cutoffs are computed on the **full 1990–2025 sample**, so a
+    2022 cell's clip depends on 2025 data. Standard practice and small in
+    effect (11,040 of 393,148 rows move), but state it in the formula text; a
+    pre-period-only cutoff is the conservative alternative if the paper ever
+    winsorizes inside an event window.
+A5. FIX-04 review finding 5 (weight by `air_time_total / airborne_min_mean`,
+    not `departures_time_eligible`) is **not triggered in FIX-05** — the script
+    produces no weighted statistic. The term transfers intact to NEW-06 and to
+    any future departures-weighted mean.
+A6. The hand-off's "393,148 cells got `baseline_n >= 2`" is loose: **398,220**
+    rows carry `baseline_n >= 2`; 393,148 is the subset that is also a valid
+    target. Harmless (the extra 5,072 carry `excess_min = NaN`), but the
+    FINDINGS wording should use the CSV's own denominators.
+A7. Process: the FIX-05 artifacts and `code/05_outcomes/05_build_excess.py`
+    were swept into the **FIX-04** commit 57d3fd8 (02:05) before FIX-05 was
+    reviewed. Content is the regenerated version, so nothing is contaminated,
+    but the commit-after-review discipline (standing rule 8) was not followed
+    for this task.
+
+**VERDICT: FAIL** — four blocking items, all additive and text/CSV-only. Every
+computed value in FIX-05 reproduced exactly; **no shipped number needs to
+change**, and the ≥2-observation and COVID-exclusion rules must not be touched
+in the fix cycle.
+
+### FIX-05 block for ROUND_01_FINDINGS.md (G9-traced; the director should carry
+this and nothing else from FIX-05, after the four required actions are met)
+
+1. **What was built.** For every clean US cell we now have "excess airborne
+   minutes": the cell's mean airborne minutes per departure minus the median of
+   the same directed route in the same calendar month over the trailing three
+   years, COVID months never counted, at least two prior years required.
+   *(desc_outcomes.csv, column `formula`, rows `excess_min` /`excess_min_w` /
+   `excess_z` / `bidir_sum`.)*
+2. **Scale of the outcome.** 393,148 cells have an excess value; pooled p1
+   −21.23, median 0.011, p99 21.25, mean 0.057, sd 8.85 minutes; after
+   winsorizing 1/99 within route, mean 0.035, sd 8.20. The bidirectional sum
+   exists for 389,446 cells (mean 0.070, sd 12.60). *(desc_outcomes.csv, rows
+   `excess_min`/`excess_min_w`/`bidir_sum` with `decade == all`.)* Median
+   excess of essentially zero is what a correctly-centred baseline should give.
+3. **One cell in four has no usable baseline.** 122,727 of 515,875 valid cells
+   (23.8%) fail the ≥ 2-prior-years rule; 1990 and 1991 fail at 100% because no
+   prior history exists. *(baseline_failures.csv, rows `US,1990` … `US,2025`,
+   columns `n_valid_cells`, `n_baseline_fail`, `baseline_fail_share`.)*
+4. **The rule empties the event window.** Baseline failure is **0.8684** in
+   2022 and **0.8750** in 2023 *(baseline_failures.csv, rows `US,2022` and
+   `US,2023`)*, versus 0.195 in 2024 and 0.145 in 2025 — because 2022 and 2023
+   targets can only look back into the barred COVID months. The surviving 2022
+   and 2023 cells are January and February only, so **the excess and
+   bidirectional-sum outcomes do not exist for any month from March 2022
+   through December 2023**, the whole first two years after the February 2022
+   event. Any 2022 event design must use the raw airborne level, a different
+   baseline window agreed with the human, or the 2024–25 recovery period. *(To
+   be cited from the month-resolution rows required by review finding 1; until
+   those exist, only the two annual shares above are citable.)*
+5. **Data-quality screen.** Cells whose implied ground speed (miles ÷ airborne
+   hours) is below 50 mph are excluded from both the target and the baseline
+   roles — 328 cells panel-wide, 141 of them otherwise-clean cells — and two
+   zero-distance seaplane cells (`SWL↔WFB`) are explicitly kept, since 0 miles
+   makes speed undefined rather than slow. *(outcome_data_quality_exclusions.csv,
+   `check` values `implied_speed_below_50mph`, `distance_zero_cell_ok`,
+   `diagnostic_only_gt_1000min_per_dep`.)* The screen is deliberately
+   permissive and one-sided; see the sensitivity required by review finding 2
+   before any mean of excess is reported.
+6. **All-US, and only that.** Every row of every FIX-05 deliverable carries the
+   sample label "US carriers' airborne time on US-touching international
+   segments" and `nation == 'US'` *(baseline_failures.csv, column `sample`;
+   desc_outcomes.csv, column `sample`)*. Nothing here is a carrier-nation
+   comparison; the G6/G7 embargo is intact.
+7. **G8 holds and was proven, not asserted.** No baseline uses a COVID month
+   (2020-03…2021-12) and none uses fewer than two observations; the overseer
+   mutation-tested both assertions and both exit 1.
+
+### FINAL RULING — NEW-06
+
+**Confirmed, not revised: NEW-06 may not ship as commissioned.** Re-verified
+this session from `coverage_by_corridor.csv`: **0 of 908 non-US corridor ×
+nation × year cells pass G6**, and their `share_air_time_valid` is **0.0 at the
+maximum**, not merely below the 0.50 bound — foreign operators report no
+airborne time anywhere in the file (per corridor: useastasia 0/337,
+useurope_placebo 0/425, usmideast 0/126, usindia 0/20; all 129 US cells pass).
+In `panel_excess.parquet`, non-US cells on the four anchor corridors in
+2019–2024 number 7,599 / 10,818 / 5,687 / 998 and **exactly 0 of them carry a
+non-null `airborne_min_mean`**. Every commissioned corridor figure would be a
+single US line labelled as a cross-national comparison, and every row of
+`raw_wedge_diffs.csv` would be NaN with n = 0 on one side by construction.
+Shipping those five figures would be the most attackable artifact this project
+could produce. Compounding it, the US line itself goes dark on the excess
+outcomes exactly at the event: in the zoom window 2021-06…2022-12 the corridor
+cells have `excess_min_w` only through 2022-02 (finding 1).
+
+**NEW-06 is therefore BLOCKED as specified — figures
+`fig_raw_wedge_useastasia.png`, `fig_raw_wedge_usindia.png`,
+`fig_raw_wedge_usmideast.png`, `fig_raw_wedge_useurope_placebo.png` and
+`fig_raw_wedge_bidir.png` may not be produced in wedge form** (one line per
+operator nation, read as a national comparison). The reason is a property of
+the BTS extract established in FIX-03 and re-verified twice, not a modelling
+choice, and no mapping fix or estimator can recover it.
+
+**What NEW-06 MAY still legitimately produce, as a documented null (this is the
+reduced deliverable, and it is the whole of it):**
+
+1. `raw_wedge_by_corridor.csv` — the **full commissioned family**, all 4
+   corridors × 2 windows × every operator nation ever observed on the corridor
+   × every month in the window, so the round file's "report every corridor
+   including empty cells with n = 0" gate is checkable. Statistic columns
+   present and NaN where undefined, with `n_cells`, `n_cells_with_airborne`
+   (0 for every non-US nation) and a `reason_missing` column naming the cause
+   and its trace (`coverage_by_corridor.csv`, `gate_g6_pass` /
+   `share_air_time_valid`).
+2. `raw_wedge_diffs.csv` — written, with every row's `n_treated`/`n_control`
+   and a NaN `diff`, plus the `definition` column the round file requires and
+   an explicit "NaN by construction: no non-US operator reports airborne time"
+   note. It is a completeness record only: it may not be plotted, and no sign,
+   direction or placebo comparison may be read from it in FINDINGS or anywhere
+   else.
+3. **One figure, and it is a data-availability figure, not a wedge figure** —
+   e.g. corridor × operator-nation × month count of cells with non-null
+   airborne time, showing the zero band for every foreign nation against the
+   populated US row, titled as coverage/availability and captioned
+   "US-touching international segments". This is the honest visual form of the
+   null.
+4. **Optionally**, a US-only raw-level series per corridor: departures-weighted
+   mean `airborne_min_mean` by corridor × month across both windows, weights
+   `air_time_total / airborne_min_mean` (FIX-04 finding 5, advisory A5), with
+   the 2022-02 line drawn, titled "US carriers only — not a cross-national
+   comparison". If excess or bidirectional-sum panels are shown at all they
+   must carry the annotated 2022-03…2023-12 gap; a line that simply stops is
+   not acceptable.
+
+Standing conditions that survive unchanged: NEW-06 is not a headline under any
+circumstance; corridor 1 / ICN may be computed but not reported pending the
+FIX-02 human ruling; RU and IR remain labelled MATCH-SENSITIVE; and the
+agent-drafted `data/raw/events/ban_nations_2022.csv` must be caveated wherever
+it is used. If the director prefers, NEW-06 may instead be recorded BLOCKED in
+full with items 1–2 written as the record of the null — but items 1–2 are the
+minimum: the EXPLORE contract requires the empty cells to be on the record, and
+silence is not an option.
+
+**FIX-05 VERDICT: FAIL** (blocking findings 1–4, all additive; no shipped
+number changes). **NEW-06: BLOCKED as commissioned**, reduced to the four
+documented-null deliverables above.
+
+---
+
+## FIX-05 review (cycle 2) — 2026-09-02 02:43 UTC
+
+**Scope.** Confirm only that the four cycle-1 blocking fixes and the five
+advisories landed, that nothing previously verified moved, and that both
+checkers still exit 0. Cycle-1 provenance, the isolated byte-identical re-run,
+the baseline hand-checks and the G8 mutation tests are NOT re-litigated. No
+analysis code was modified by the overseer.
+
+### Nothing moved (independently recomputed from `panel_excess.parquet`)
+
+`md5(data/interim/panel_excess.parquet)` = **075189120f0cf3b7307601fbb543717c**,
+as reported. Because cycle 1 recorded no md5 literal, I did not accept the hash
+as proof and re-derived the substance instead. Every cycle-1 number reproduces
+to the digit from the shipped parquet with my own code:
+
+| quantity | cycle-1 | cycle-2 recompute |
+|---|---|---|
+| valid measurement | 515,875 / 1,026,729 = 0.5024451 | **515,875**, 0.5024451 |
+| implied-speed flags (all / cell_ok) | 328 / 141 | **328 / 141** |
+| distance == 0 (all / cell_ok) | 50 / 2 | **50 / 2** |
+| baseline failures | 122,727 | **122,727** |
+| non-null `excess_min` | 393,148 | **393,148** |
+| winsorized rows | 11,040 | **11,040** |
+| `baseline_mad == 0` among targets | 1,629 | **1,629** |
+| non-null `bidir_sum` | 389,446 | **389,446** |
+| `baseline_n >= 2` any row / valid target | 398,220 / 393,148 | **398,220 / 393,148** |
+| `\|excess_z\| > 100` / `> 1000` | 5,904 / 429 | **5,904 / 429** |
+
+`desc_outcomes.csv`: all eight numeric columns × 20 rows are **identical to the
+HEAD version (max abs diff 0.0 on every column)** — only `formula` text changed.
+Spot-recomputed from the parquet: `excess_min` all (n 393,148, mean 0.056855,
+sd 8.851467, p1 −21.2319, p50 0.011360, p99 21.2533), `excess_min_w` all (mean
+0.034744, sd 8.196160), `bidir_sum` all (n 389,446, mean 0.069697, sd
+12.603801), `excess_min` 2020s (n 57,646, mean −0.061045) — all exact.
+`baseline_failures.csv` annual rows: **max abs diff 0.0** vs HEAD on
+`n_valid_cells`, `n_baseline_fail`, `baseline_fail_share`.
+`outcome_data_quality_exclusions.csv`: **identical to HEAD on all 12 shared
+columns**, 410 rows, `sample` appended.
+`git diff HEAD` on `05_build_excess.py` deletes **nothing** from the screen,
+baseline, COVID-bar, winsorization or G8 logic; constants unchanged
+(`IMPLIED_SPEED_MPH_MIN = 50.0`, `WINSOR_LO/HI = 0.01/0.99`,
+`COVID_START/END = (2020,3)/(2021,12)`, `baseline_n >= 2`). The change is
+additive plus figure/text.
+
+`python code/99_validate_outputs.py` → **exit 0** ("27 CSVs scanned, 0 FAIL, 0
+WARN"; was 24, +3 new). `python code/98_check_trino_usage.py` → **exit 0**. All
+27 CSVs are inside `rounds/round-1-t100-panel/`; no project CSV exists outside a
+round folder.
+
+### Blocking item 1 — LANDED, and the correction is UPHELD; my cycle-1 framing was WRONG
+
+Recomputed non-null `excess_min` by month directly from the parquet:
+
+- 2022: **1156, 1162, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0** (total 2,318)
+- 2023: **1169, 1170, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0** (total 2,339)
+- 2024: 1257 … 1376, total 15,712; 2025 total 17,253.
+
+`bidir_sum` shows the same shape (2022: 1150, 1156, then zeros; 2023: 1164,
+1168, then zeros).
+
+**The implementer's characterization is correct and mine was not.** The zero
+range is **two blocks of ten months each — 2022-03 … 2022-12 and 2023-03 …
+2023-12 — not one continuous block 2022-03 … 2023-12.** January and February of
+*both* 2022 and 2023 are populated. My cycle-1 sentence "0 in every one of
+2023-01 … 2023-12" was false; 2023 has 2,339 computable cells, all in Jan–Feb.
+
+Mechanism verified on the data, not inferred: `baseline_n` among valid targets
+is capped at **2** in 2022-01 (1,156 cells at n=2), 2022-02 (1,162), 2023-01
+(1,169), 2023-02 (1,170), and capped at **1** in 2022-03 (1,240 cells at n=1,
+zero at n≥2), 2023-03 (1,392 at n=1), 2023-12 (1,449 at n=1). Worked example
+`ACA→DFW 2023-01`: lag-1 = 2022-01 (154.111, valid), lag-2 = 2021-01 (154.0,
+**inside the 2020-03…2021-12 bar, dropped**), lag-3 = 2020-01 (146.0, **outside
+the bar, kept**) → n=2, median 150.0556 = shipped `baseline_med`, excess
+141.7778 − 150.0556 = **−8.2778** = shipped. From March the year-3 lag lands
+inside the bar too, so n falls to 1 and the series dies until January returns.
+2024 recovers fully (2024-03 has 1,357 cells at n≥2) because its lag-2 and lag-3
+reach 2022 and 2021-03-onward months that are *valid cells* even where their own
+excess is undefined.
+
+**Use this two-block statement in FINDINGS.** It is now CSV-citable:
+`baseline_failures.csv`, `granularity == 'month'`, 432 month rows (36 years ×
+12) with `n_excess_computed`; `baseline_fail_share == 1.000000` on exactly the
+20 blackout months and 0.171326 / 0.170000 / 0.240416 / 0.243697 on the four
+surviving months. Year and month rows **reconcile exactly**: grouping the 432
+month rows by year matches all 36 year rows on `n_valid_cells`,
+`n_baseline_fail` and `n_excess_computed` with **zero mismatches**, and the
+month rows sum to 515,875 / 122,727 / 393,148.
+
+Figure: right-panel title is now `"2022, Jan-Feb ONLY (n=2,318) -- entirely
+BEFORE the Feb-2022 event"`, with `span` and `n` computed from the data (lines
+850–861) and `4/24` computed from `nonzero_ym`. Rendered PNG inspected at full
+size: **both titles unclipped, no overflow into the neighbouring axes**, legends
+readable, n=2,318 matches the CSV.
+
+### Blocking item 2 — LANDED; both methods independently reproduced
+
+`excess_speed_screen_sensitivity.csv`, 40 rows = 4 thresholds × 5 groups
+(`all` + decades 1990/2000/2010/2020) × 2 methods. (The hand-off said "pooled +
+5 decades"; it is pooled + **4** decades. The CSV is right, the description was
+loose.)
+
+- **`naive_filter_shipped_series` reproduced exactly by me** from the shipped
+  `excess_min_w`: at 50/100/150/200 mph, n = 393,148 / 392,772 / 391,977 /
+  388,727, removed = 0 / 376 / **1,171** / 4,421, mean = 0.034744 / 0.012692 /
+  **0.014407** / 0.003292, sum = 13659.5679 / 4985.1383 / 5647.2627 / 1279.7275,
+  p1/p99/sd all exact. The 150 mph row reconciles with my cycle-1 diagnostic to
+  the digit: **1,171 cells, 0.03474 → 0.01441**.
+- **`full_recompute_stricter_valid_mask` reproduced exactly by me** by
+  re-running the whole pipeline (stricter valid mask → candidate merge → COVID
+  bar → n≥2 → median → excess → per-route 1/99 clip) at each threshold:
+  n_valid = 515,875 / 515,040 / 513,041 / 508,108, n_excess = 393,148 / 392,622
+  / 391,769 / 387,697, mean = 0.034744 / 0.021699 / 0.020870 / 0.025337,
+  sd/p1/p50/p99/sum all exact. **This is a genuine re-estimation, not a filter.**
+- **Threshold was NOT moved.** The 50 mph row of the full-recompute method
+  reproduces the shipped series bit for bit (515,875 valid, 393,148 excess, mean
+  0.034744, sum 13659.5679), and the shipped constant is `IMPLIED_SPEED_MPH_MIN
+  = 50.0`, untouched in the diff.
+- **Labelling is correct and not mixed.** The `method` column separates the two
+  and the `note` explicitly states that the full recompute "also cleans
+  contaminated candidates out of OTHER cells' baselines" while the naive version
+  "just drops the flagged cells … with no recomputation". No row blends them.
+- Internal consistency: within every method × threshold, the four decade rows'
+  `sum_excess_min_w` sums exactly to the `all` row's, and `n_excess_computed`
+  sums exactly (e.g. 393,148 at 50 mph) — the decade partition is exhaustive and
+  non-overlapping. Decade rows spot-recomputed at 100 and 200 mph for all four
+  decades: **8/8 exact** on n, mean and p99.
+- **Correction to the hand-off:** the >700 mph diagnostic is **not** "constant
+  at 117". It is **117 on every `full_recompute` row and 48 on every
+  `naive_filter` row**. I recomputed both: 117 cells with implied speed > 700
+  among the 515,875 valid measurements, 48 among the 393,148 non-null-excess
+  cells (241 panel-wide; max implied speed 33,913 mph). Each method carries the
+  count for its own denominator, which is correct; but the CSV never says so
+  (advisory B4).
+
+### Blocking item 3 — LANDED; VERIFY item 3 now performable and satisfied
+
+`excess_winsorization_cutoffs.csv`: 2,910 rows, keyed origin × dest × nation,
+columns `n / p1 / p99 / n_clipped / cutoff_computed_on / sample`, zero nulls.
+I rebuilt the whole table from `panel_excess.parquet` (`excess_min` grouped by
+directed route, q01/q99, clipped-count) and merged: **2,910 matched both ways,
+0 left-only, 0 right-only; max abs diff n = 0, n_clipped = 0, p1 = 7.1e-15,
+p99 = 1.4e-14** (float round-trip only). `sum(n) = 393,148` = non-null
+`excess_min`; `sum(n_clipped) = 11,040` = the winsorized count.
+
+Route spot-checks against the raw excess (random draw plus my cycle-1 routes),
+CSV vs my own quantiles: `NGO→PDX` n=98, −19.653346 / 15.567935, 2 clipped;
+`MFE→MEX` n=106, −3.142521 / 3.603716, 4 clipped; `MBJ→TPA` n=117, −4.978452 /
+9.711800, 4 clipped; `PVR→MDW` n=4, −2.847222 / 11.994478, 2 clipped;
+`JFK→LHR` n=388, −19.82414 / 24.462299; `LHR→JFK` n=387, −27.095057 /
+24.326884; `PTY→MIA` n=382, −6.802012 / 6.581079. **All exact**, and the last
+three match my cycle-1 hand-computed values.
+
+Degenerate groups: **55 groups have p1 == p99, covering 75 rows (0.019%)** —
+52 with n=1, two with n=5 and one with n=13, all constant-valued — and **every
+one has `n_clipped == 0`**, so the clip is a strict no-op there and no group is
+collapsed to a point. Groups with n ≤ 5: **232 groups, 691 rows (0.176%)**.
+Both figures match cycle 1 exactly. No row has p1 > p99.
+
+`excess_construction_diagnostics.csv`: 12 rows, all 12 values independently
+recomputed and **all 12 exact** — 515,875 / 398,220 / 393,148 / 11,040 / 1,629 /
+389,446 / 5,904 / 429 / 328 / 141 / 2 / 80. Row 1's note correctly distinguishes
+the 398,220 "any row" denominator from the 393,148 "valid target" denominator,
+closing advisory A6.
+
+### Blocking item 4 — LANDED
+
+`desc_outcomes.csv` `excess_z` `formula` now carries the near-degenerate-MAD
+caveat verbatim ("with at most 3 candidates, baseline_mad is itself a
+near-degenerate statistic … p99 roughly 84, some cells beyond |z|=1000"),
+directs the reader to check `excess_min` and `baseline_mad` first, cites
+`excess_construction_diagnostics.csv` for the tail counts, and ends **"Treat as
+NOT-FOR-USE pending a director-commissioned dispersion measure with a larger
+candidate pool."** The moments are unchanged (n 391,519, sd 205.947675, p1
+−71.77304, p99 83.995782) — the column was caveated, not re-specified, as
+required.
+
+### Advisories 5 — all LANDED
+
+- `logs/05_build_excess.log` is now **26 lines, one run only** (02:33:17 →
+  02:34:22 DONE). No VOID run survives. (A1 closed.)
+- `dq_df.to_csv(DQ_EXCLUSIONS_CSV)` moved to **line 369, after both G8 raise
+  points at 353 and 357**. (A2 closed for the gate.)
+- `sample` column present on all 410 rows of
+  `outcome_data_quality_exclusions.csv`, single value, rest of the file
+  byte-equal to HEAD. (A3 closed.)
+- `excess_min_w` `formula` now states the cutoffs use "ALL non-null excess_min
+  for that route across the full 1990-2025 sample (not separately by year) -- a
+  2022 cell's clip boundary can therefore depend on that same route's 2025
+  data", and points at both new CSVs. (A4 closed.)
+
+### Pathology sweep (all 27 round CSVs, not a manifest)
+
+No p-value, SE or coefficient column exists anywhere in FIX-05 (G2/G3/G4 N/A —
+no p = 0.0, no identical-p family, no |SE/coef| pathology possible). No value
+exceeding 1e6 that is not a legitimate count (departures, bytes, row counts).
+All NaN columns are structurally justified: `baseline_failures.month` (NaN on
+the 36 year-granularity rows only), `excess_speed_screen_sensitivity`'s
+`n_valid_measurement` (method-specific) and `n_removed_from_shipped_series`
+(method-specific), `outcome_data_quality_exclusions`'s two count columns on the
+`distance_zero` rows. `baseline_fail_share` ∈ [0.0454545, 1.0] — inside [0,1]
+on all 468 rows. Shares/precisions elsewhere unchanged. No sign contradiction:
+the decade means of `excess_min_w` are stable across all four thresholds and
+both methods (−0.11/−0.19, +0.73/+0.75, −0.41/−0.44, −0.03/−0.06).
+
+### Gate status
+
+- **G1** — PASS. Keys unique; no unexplained empty cells in any of the three new
+  CSVs (`excess_winsorization_cutoffs.csv` and
+  `excess_construction_diagnostics.csv` have zero nulls anywhere).
+- **G2/G3/G4** — N/A (no inference object produced).
+- **G5** — PASS. `baseline_fail_share` ∈ [0,1] on all 468 rows.
+- **G6/G7** — PASS, unchanged. All 468 `baseline_failures` rows, all 20
+  `desc_outcomes` rows, all 40 sensitivity rows, all 2,910 cutoff rows, all 12
+  diagnostics rows and all 410 exclusion rows carry the all-US `sample` label;
+  `nation == 'US'` throughout. No cross-national quantity.
+- **G8** — PASS, unchanged. COVID bar and n≥2 rule untouched in the diff
+  (constants and raise points verbatim); the cycle-1 mutation proof stands.
+- **G9** — **PASS (was PARTIAL).** All four previously log-only or parquet-only
+  quantities are now citable from a round-folder CSV: month-resolution blackout
+  (`baseline_failures.csv`, `granularity == 'month'`), 11,040 winsorized and
+  1,629 zero-MAD rows (`excess_construction_diagnostics.csv`), per-route cutoffs
+  (`excess_winsorization_cutoffs.csv`), speed-screen fragility
+  (`excess_speed_screen_sensitivity.csv`).
+
+### Findings — ADVISORY only (carry forward; none blocks)
+
+B1. **Write-before-assert persists for the two NEW CSVs.** `winsor_cutoffs`
+    writes at line 426 before its consistency assert at 429; `sensitivity_df`
+    writes at line 632 before the asserts at 641 and 652. These guard internal
+    consistency rather than a gate, so no gate can be bypassed — but it is the
+    same pattern for the fourth round running. Move the writes below the
+    asserts.
+B2. **Line 652 hard-codes an overseer diagnostic into production code:**
+    `assert int(naive_check["n_removed_from_shipped_series"]) == 1171`. Any
+    legitimate future data refresh (a new BTS vintage, a FIX-04 panel change)
+    will make the script raise for a non-error. Convert to a logged comparison
+    against a value read from the CSV, or parameterise it.
+B3. **The one remaining hand-typed date range is the one the director will
+    read.** The right-panel title's second line contains the string literal
+    `"2022-03..2023-12 mostly unobservable"` (line 882) while the `4/24` beside
+    it is computed. Given the adjudication above, the true zero set is two
+    blocks. `zero_ym` and `nonzero_ym` are already built at lines 867–873 and
+    logged; build the range text from them. Not misleading as written ("mostly",
+    plus the computed 4/24), so advisory — but the FINDINGS block must use the
+    two-block wording, not this string.
+B4. **The sensitivity CSV's `note` does not gloss its own denominators.**
+    `n_speed_gt_700mph_diagnostic` is 117 on full-recompute rows and 48 on naive
+    rows, and two count columns are NaN by method. Both are correct; neither is
+    explained in the CSV, so a reader will read the 117/48 split as an
+    inconsistency. One sentence in `note` fixes it.
+B5. **Reading guide for the director, not a defect.** The pooled mean of
+    `excess_min_w` (0.034744 min ≈ 2 seconds) is a near-cancellation of much
+    larger and much more stable decade means (−0.111, +0.752, −0.412, −0.053;
+    `excess_speed_screen_sensitivity.csv`, `screen_mph == 50`, both methods).
+    That is why the pooled mean swings −59% under a 150 mph screen while every
+    decade mean moves by less than 0.08. Do not headline the pooled mean of
+    excess; report the decade structure, or a within-route/within-year design.
+
+**VERDICT: PASS**
+
+### FIX-05 block for ROUND_01_FINDINGS.md — FINAL, G9-traced (supersedes the cycle-1 block)
+
+1. **What was built.** For every clean US cell we now have "excess airborne
+   minutes": the cell's mean airborne minutes per departure, minus the median of
+   the same directed route in the same calendar month over the trailing three
+   years, with COVID months (March 2020 – December 2021) never counted and at
+   least two prior years required. *(desc_outcomes.csv, column `formula`, rows
+   `excess_min` / `excess_min_w` / `excess_z` / `bidir_sum`.)*
+2. **Scale of the outcome.** 393,148 cells have an excess value; pooled p1
+   −21.23, median 0.011, p99 21.25, mean 0.057, sd 8.85 minutes; after clipping
+   the top and bottom 1% within each route ("winsorizing"), mean 0.035, sd 8.20.
+   The bidirectional sum (outbound plus return leg, same month) exists for
+   389,446 cells (mean 0.070, sd 12.60). *(desc_outcomes.csv, rows
+   `excess_min` / `excess_min_w` / `bidir_sum`, `decade == all`.)* A median
+   excess of essentially zero is what a correctly-centred baseline should give.
+   **Do not headline the pooled mean:** 0.035 minutes is two seconds, and it is
+   a near-cancellation of decade means −0.111 (1990s), +0.752 (2000s), −0.412
+   (2010s), −0.053 (2020s) *(excess_speed_screen_sensitivity.csv,
+   `screen_mph == 50`, `decade` rows)*.
+3. **One cell in four has no usable baseline.** 122,727 of 515,875 valid cells
+   (23.8%) fail the two-prior-years rule; 1990 and 1991 fail at 100% because no
+   prior history exists. *(baseline_failures.csv, `granularity == 'year'`, rows
+   `US,1990` … `US,2025`, columns `n_valid_cells`, `n_baseline_fail`,
+   `baseline_fail_share`.)*
+4. **The rule blacks out the event window — in two blocks, not one.** Baseline
+   failure is 0.8684 in 2022 and 0.8750 in 2023, versus 0.1950 in 2024 and
+   0.1448 in 2025 *(baseline_failures.csv, `granularity == 'year'`, rows
+   `US,2022`–`US,2025`)*. At month resolution the pattern is **two ten-month
+   blackouts, not one continuous twenty-two-month one**: the excess and
+   bidirectional-sum outcomes exist for **no month in 2022-03 … 2022-12 and no
+   month in 2023-03 … 2023-12** (`baseline_fail_share == 1.000000`,
+   `n_excess_computed == 0` on all 20 of those rows), while **January and
+   February of both years survive** — 1,156 cells in 2022-01, 1,162 in 2022-02,
+   1,169 in 2023-01, 1,170 in 2023-02. *(baseline_failures.csv,
+   `granularity == 'month'`, rows `US,2022,1` … `US,2023,12`, column
+   `n_excess_computed`.)* The reason is mechanical: a January or February target
+   can still reach its three-years-back month (January/February 2020), which
+   sits just outside the COVID bar, so it keeps two baseline observations; from
+   March onward both the two- and three-years-back months fall inside the bar
+   and only one survives. **Every surviving 2022 and 2023 cell is therefore a
+   January or February cell, and the 2022 ones are entirely before the February
+   2022 event this paper studies.** Any 2022 event design must use the raw
+   airborne level, a different baseline window agreed with the human, or the
+   2024–25 recovery (15,712 cells in 2024, 17,253 in 2025). This is the round's
+   principal limitation.
+5. **Data-quality screen, and how much it matters.** Cells whose implied ground
+   speed (miles ÷ airborne hours) is below 50 mph are excluded from both the
+   target and the baseline role — 328 cells panel-wide, 141 of them
+   otherwise-clean — and two zero-distance seaplane cells (`SWL↔WFB`) are
+   deliberately kept, because 0 miles makes speed undefined rather than slow.
+   *(outcome_data_quality_exclusions.csv, `check` values
+   `implied_speed_below_50mph`, `distance_zero_cell_ok`,
+   `diagnostic_only_gt_1000min_per_dep`; counts also in
+   excess_construction_diagnostics.csv, rows `n_implied_speed_below_50mph`,
+   `n_implied_speed_below_50mph_cell_ok`, `n_distance_zero_cell_ok`,
+   `n_diagnostic_gt_1000min_per_dep_cell_ok`.)* **The 50 mph threshold was NOT
+   changed**, but its fragility is now on the record two ways: simply dropping
+   the cells implying under 150 mph from the shipped series removes 1,171 cells
+   (0.30%) and moves the pooled mean from 0.034744 to 0.014407 (−59%), while
+   re-estimating the whole pipeline with a 150 mph gate gives 0.020870. The
+   screen is also one-sided — 117 valid cells imply over 700 mph (an
+   under-reported airborne time, which reads as a spurious speed-up) and nothing
+   screens them. *(excess_speed_screen_sensitivity.csv, 40 rows, columns
+   `method` = `naive_filter_shipped_series` vs
+   `full_recompute_stricter_valid_mask`, `screen_mph`, `mean`,
+   `n_removed_from_shipped_series`, `n_speed_gt_700mph_diagnostic`.)* The
+   threshold is a decision for the human, not for an agent.
+6. **Winsorization is documented per route.** The 1st/99th-percentile clip is
+   computed within each directed route (origin × destination × operator nation)
+   over the full 1990–2025 sample, so a 2022 cell's clip boundary can depend on
+   that route's 2025 data; 11,040 of 393,148 rows are clipped across 2,910
+   routes. *(excess_winsorization_cutoffs.csv, columns `n`, `p1`, `p99`,
+   `n_clipped`, `cutoff_computed_on`; excess_construction_diagnostics.csv, row
+   `n_winsorized_rows`.)* 55 thin routes have p1 == p99 (75 rows, 0.019%), where
+   the clip does nothing at all (`n_clipped == 0` on every one).
+7. **`excess_z` must not be used.** The spread measure it divides by (a median
+   absolute deviation) is built from at most three numbers, so it can be near
+   zero by chance and the ratio then reads as a huge anomaly for an ordinary
+   excess value: 5,904 cells exceed |z| = 100 and 429 exceed |z| = 1,000, with a
+   99th percentile of 84. The column is marked NOT-FOR-USE pending a
+   director-commissioned dispersion measure with a larger pool.
+   *(desc_outcomes.csv, row `excess_z`, column `formula`;
+   excess_construction_diagnostics.csv, rows `n_excess_z_abs_gt_100`,
+   `n_excess_z_abs_gt_1000`.)*
+8. **All-US, and only that.** Every row of every FIX-05 deliverable carries the
+   sample label "US carriers' airborne time on US-touching international
+   segments" and `nation == 'US'`. Nothing here is a carrier-nation comparison;
+   the G6/G7 embargo is intact.
+9. **The two hard rules hold, and were proven rather than asserted.** No
+   baseline uses a COVID month and none uses fewer than two observations; the
+   overseer mutation-tested both checks in cycle 1 and both abort the run.
+
+### NEW-06 — RULING CONFIRMED, UNCHANGED
+
+My cycle-1 final ruling on NEW-06 **stands in full and is unaffected by
+anything in FIX-05 cycle 2** (which touched no coverage or corridor artifact).
+NEW-06 may not ship as commissioned: the five wedge figures
+(`fig_raw_wedge_useastasia.png`, `fig_raw_wedge_usindia.png`,
+`fig_raw_wedge_usmideast.png`, `fig_raw_wedge_useurope_placebo.png`,
+`fig_raw_wedge_bidir.png`) are prohibited in wedge form. Commission it in
+exactly the reduced form specified:
+
+1. `raw_wedge_by_corridor.csv` — the full commissioned family (4 corridors × 2
+   windows × every operator nation ever observed on the corridor × every month),
+   **including the n = 0 rows**, with `n_cells`, `n_cells_with_airborne` and a
+   `reason_missing` column tracing the cause to `coverage_by_corridor.csv`
+   (`gate_g6_pass` / `share_air_time_valid`).
+2. `raw_wedge_diffs.csv` — a completeness record only: every row's
+   `n_treated`/`n_control` plus a NaN `diff`, the required `definition` column,
+   and an explicit "NaN by construction: no non-US operator reports airborne
+   time" note. **Never plotted; no sign, direction or placebo comparison read
+   from it anywhere.**
+3. **One figure, and it is a data-availability figure, not a wedge figure** —
+   corridor × operator-nation × month counts of cells with non-null airborne
+   time, showing the zero band for every foreign nation against the populated US
+   row, titled as coverage/availability.
+4. **Optionally** a US-only raw-*level* corridor series (departures-weighted
+   mean `airborne_min_mean` by corridor × month, weights
+   `air_time_total / airborne_min_mean` per FIX-04 finding 5), titled **"US
+   carriers only — not a cross-national comparison"**, with the 2022-02 line
+   drawn. If any excess or bidirectional-sum panel is shown, it must carry the
+   **two annotated gaps, 2022-03…2022-12 and 2023-03…2023-12** (finding 4 above)
+   — a line that simply stops is not acceptable, and a single annotated
+   2022-03…2023-12 gap is now known to be the wrong shape.
+
+Standing conditions survive unchanged: NEW-06 is never a headline; corridor 1 /
+ICN may be computed but not reported pending the FIX-02 human ruling; RU and IR
+remain labelled MATCH-SENSITIVE; the agent-drafted
+`data/raw/events/ban_nations_2022.csv` must be caveated wherever it is used.

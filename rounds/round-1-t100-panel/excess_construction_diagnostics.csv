@@ -1,0 +1,13 @@
+metric,value,note,sample
+n_valid_measurement,515875,cell_ok & airborne_min_mean notna & implied speed >= 50 mph or distance == 0,US carriers' airborne time on US-touching international segments
+n_baseline_ge2_any_row,398220,"rows where SOME cell's 3-year same-month baseline had >= 2 candidates, regardless of whether this row's OWN measurement is a valid target",US carriers' airborne time on US-touching international segments
+n_baseline_ge2_valid_target,393148,subset of the above that is ALSO a valid target -- equals n_obs for excess_min in desc_outcomes.csv; this is the correct denominator for 'cells with a computed excess value',US carriers' airborne time on US-touching international segments
+n_winsorized_rows,11040,"non-null excess_min rows where excess_min_w != excess_min (1st/99th percentile clip, within route x nation, applied)",US carriers' airborne time on US-touching international segments
+n_zero_mad_rows,1629,valid-target rows with baseline_mad == 0 -- excess_z set to NaN here rather than a fabricated +-inf,US carriers' airborne time on US-touching international segments
+n_bidir_sum_nonnull,389446,both directed legs (A->B and B->A) present in the same nation/year/month,US carriers' airborne time on US-touching international segments
+n_excess_z_abs_gt_100,5904,"excess_z magnitude > 100 -- see the excess_z formula-text caveat: MAD is computed from at most 3 baseline candidates and can be near-zero by chance, making excess_z read as an enormous anomaly for an ordinary excess_min value",US carriers' airborne time on US-touching international segments
+n_excess_z_abs_gt_1000,429,"excess_z magnitude > 1000 -- same caveat, more extreme",US carriers' airborne time on US-touching international segments
+n_implied_speed_below_50mph,328,"flagged by the implied-speed screen (panel-wide, not just cell_ok)",US carriers' airborne time on US-touching international segments
+n_implied_speed_below_50mph_cell_ok,141,"same, restricted to cell_ok cells",US carriers' airborne time on US-touching international segments
+n_distance_zero_cell_ok,2,"kept, not excluded -- implied speed undefined, see DATA-QUALITY SCREEN",US carriers' airborne time on US-touching international segments
+n_diagnostic_gt_1000min_per_dep_cell_ok,80,NOT an exclusion criterion on its own -- see outcome_data_quality_exclusions.csv,US carriers' airborne time on US-touching international segments
