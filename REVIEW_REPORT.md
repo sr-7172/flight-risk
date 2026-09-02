@@ -3629,3 +3629,549 @@ Standing conditions survive unchanged: NEW-06 is never a headline; corridor 1 /
 ICN may be computed but not reported pending the FIX-02 human ruling; RU and IR
 remain labelled MATCH-SENSITIVE; the agent-drafted
 `data/raw/events/ban_nations_2022.csv` must be caveated wherever it is used.
+
+---
+
+## NEW-06 review (reduced form) — 2026-09-02 03:10 UTC
+
+**Scope.** NEW-06 as reduced by my binding ruling of 02:14 UTC (re-confirmed
+02:43): four permitted deliverables, the five `fig_raw_wedge_*.png` prohibited.
+No analysis code was modified by the overseer; all mutation tests were run on a
+copy in `/tmp/rev06`.
+
+### Checks run (every number below recomputed by me, not read from a log)
+
+C1. **Provenance and determinism.** Built an isolated root (`/tmp/rev06`,
+`data/raw` and `data/interim` symlinked, an empty `rounds/round-1-t100-panel/`
+seeded with only `carrier_nation_corridor_coverage.csv` and
+`coverage_by_carrier_group.csv`) and ran the script there. Exit **0**; all four
+artifacts **byte-identical** (`cmp`) to the ones in the round folder:
+`raw_wedge_by_corridor.csv`, `raw_wedge_diffs.csv`,
+`figures/fig_data_availability.png`, `figures/fig_us_only_corridor_series.png`.
+No network import in the script (`requests|urllib|http|socket|trino|opensky` all
+absent). No file under `data/raw/` has an mtime after 21:06. All four outputs
+are inside the round folder; nothing was written outside it.
+
+C2. **Extensive margin rebuilt from `panel_extensive.parquet`.** Independent
+group-by on (corridor, nation, year, month): `n_routes_active`,
+`n_routes_total` and `departures_performed_month_sum` match the CSV on **all
+5,824 rows, 0 mismatches, max abs diff 0**.
+
+C3. **Matched-population statistics rebuilt from `panel_excess.parquet`.**
+`n_cells_matched`, `n_cells_airborne_valid`, `n_cells_excess_valid`,
+`n_cells_bidir_valid`: **0 mismatches**. `airborne_min_mean_wtd` max abs diff
+**1.14e-13**, `excess_min_w_wtd` **1.78e-15**, `bidir_sum_wtd` **1.42e-14**;
+null patterns identical. The bidirectional dedupe (one row per unordered pair)
+reproduces exactly.
+
+C4. **Weight identity.** The ruling required weights `air_time_total /
+airborne_min_mean` (FIX-04 finding 5). The script uses
+`departures_airborne_eligible`; over all 568,568 cells with non-null
+`airborne_min_mean`, `|air_time_total/airborne_min_mean −
+departures_airborne_eligible|` maxes at **1.14e-13** — the same quantity.
+Requirement met.
+
+C5. **Governing fact.** At panel grain the four corridors hold **194,889**
+cells, **114,993** non-US; non-US cells with non-null `airborne_min_mean`:
+**0**; with `coverage_ok == True`: **0**. In the shipped CSV, **5,460** non-US
+rows carry **0** non-null values across `airborne_min_mean_wtd`,
+`excess_min_w_wtd`, `bidir_sum_wtd`. `coverage_by_carrier_group.csv`:
+**0 of 1,133,545** `CARRIER_GROUP == 0` rows have `AIR_TIME > 0`.
+
+C6. **Grid completeness / no hidden cell.** 5,824 rows = 4 corridors × 2 windows
+× (23, 30, 9, 2 nations) × (72, 19) months; all 8 corridor × window pairs
+present; **3,780** rows with `departures_performed_month_sum == 0`. Every
+(corridor, nation, year, month) present in `panel_excess.parquet` for 2019–2024
+is present in the family: **0 missing**; no corridor has a panel nation absent
+from the family nation list.
+
+C7. **`reason_missing` audit.** I re-derived the priority rule from each row's
+own columns: **0 mismatches** on 5,824 rows. Category counts: `no_departures`
+3,780; `foreign_structural_nonreporting` 1,685 (all non-US, all with
+departures > 0; **0** US rows carry it); `observable` 226; `us_baseline_blackout`
+120 (their (year, month) set is exactly 2022-03…2022-12 ∪ 2023-03…2023-12, no
+other month); `us_baseline_fail_other` 12 (2021-07/08, 2024 months, usindia +
+usmideast only); `us_airborne_excluded` 1 (usmideast/US/2021-02, 4 matched
+cells, 0 airborne-valid, 11 departures). `us_unmatched` is in the vocabulary and
+correctly used **0** times. Cross-checks: 0 `observable` rows with a null
+excess; 0 non-`observable` rows with a non-null excess; `covid_flag` and
+`in_excess_blackout` reproduce with 0 mismatches.
+
+C8. **Departures reconcile to the raw file.** Family departures per corridor
+(useastasia 407,670; useurope_placebo 818,572; usindia 31,788; usmideast
+202,818) equal, **exactly**, class-F `DEPARTURES_PERFORMED > 0` on those
+airports in 2019–2024 in `t100_raw.parquet` after dropping unmatched/icao-tier
+carriers. The dropped residual is 28,506 of 436,176 on useastasia (6.54%: OZ
+22,793, LJ 3,648, JX 2,065), 25 of 818,597 on useurope_placebo, **0** on
+usindia and usmideast.
+
+C9. **FIX-02 caveat traced, not typed.** `carrier_nation_corridor_coverage.csv`
+rows ICN/full_2019_2024: `match_rate_foreign` **0.675340**,
+`match_rate_foreign_precision_adjusted` **0.657241**; TPE **0.956194**. The
+caveat string's "every other NEW-06 anchor is >= 0.956" is exactly true (min
+over non-ICN anchors = 0.956194). Independent confirmation from the raw file:
+KR reads 55,197 matched corridor departures against 81,638 actual (67.6%), TW
+45,071 against 47,136 (95.6%) — the two rates the caveat quotes.
+
+C10. **Mutation tests (on the `/tmp/rev06` copy, repo code untouched).** (a)
+planted `fig_raw_wedge_bidir.png` → script exits **1** naming the file; (b)
+`nation != "US"` → `nation != "ZZ"` in the governing-fact check → exits **1**
+("568,568 non-US cells…"); (c) `diff = banned − 0.0` → exits **1** ("226 rows …
+have a non-null diff"). All three guards are live, not decorative.
+
+C11. **Prohibition, in substance.** No `fig_raw_wedge_*.png` exists. Both PNGs
+inspected as rendered images. `fig_data_availability.png` is a 3-state
+availability grid (gray/red/blue), no outcome value plotted, no nation-to-nation
+comparison possible from it; title reads "Data availability, NOT a wedge --
+US-touching international segments, 2019-2024" and the legend is legible.
+`fig_us_only_corridor_series.png` is four corridor panels of one US series each;
+title "US carriers only -- NOT a cross-national comparison", sample named,
+2022-02 dashed line, COVID band, and **two** red blackout bands with a visible
+white gap at 2023-01/02. Nothing is clipped in either figure. No line is
+interpolated across a blackout: **0** US rows with a non-null excess fall inside
+a blackout month.
+
+C12. **Pathology sweep, all 29 round CSVs (not a manifest).** No p-value column
+exists anywhere in the two new files (no inference is performed here, correctly).
+No coefficient/SE columns. No exploded magnitudes: the largest value in
+`raw_wedge_by_corridor.csv` is `airborne_min_mean_wtd` = 916.58 minutes
+(usindia, a ~15-hour sector) and the smallest 468.65; `excess_min_w_wtd` ranges
+−34.18…55.86; `bidir_sum_wtd` −29.98…111.71. No share/rate column out of [0,1]
+in any round CSV. No empty strings in any text column. `python
+code/99_validate_outputs.py` → **29 CSVs scanned, 0 FAIL, 0 WARN, exit 0**;
+`python code/98_check_trino_usage.py` → **0 FAIL, exit 0**.
+
+C13. **`raw_wedge_diffs.csv`.** 364 rows = 4 corridors × (72 + 19).
+`diff_banned_minus_not_banned` non-null: **0/364**. `mean_excess_not_banned`,
+`mean_excess_voluntary_avoidance`, `mean_excess_unclassified`: **0/364** non-null
+each; `voluntary_avoidance` is its own column and is never pooled (verified in
+code and in the file). `n_nations_not_banned_with_data` is 0 in every row.
+`status` is the single value "NOT A RESULT -- COMPLETENESS RECORD ONLY" in all
+364 rows, and the `definition` text names the agent-drafted, un-human-reviewed
+status of `ban_nations_2022.csv`. **But** `mean_excess_banned` is non-null in
+**226/364** rows and equals the US corridor `excess_min_w_wtd` series to
+**8.9e-16** in every one of them (see blocking item 1).
+
+### Gate status
+
+- **G1** (no empty coef/se/pval; pval ∈ [0,1]) — **N/A, correctly**: this task
+  estimates nothing. No coef/se/pval column exists. Nulls in the statistic
+  columns are the deliverable and every one carries a `reason_missing` trace.
+- **G2** (no |coef| > 100 on log/share outcomes) — **PASS**. No log or share
+  outcome; the minute-scale values are physically sane for the sector lengths.
+- **G3** (no p = 0.0, no repeated p across a family) — **N/A** (no p-values).
+- **G4** (SE scale) — **N/A** (no SEs).
+- **G5** (shares ∈ [0,1]; families report full cell counts) — **PASS**. No share
+  column here; the family reports 5,824 of 5,824 cells including 3,780 zeros
+  and 5,460 structurally empty non-US rows.
+- **Round-specific NEW-06 gate** ("every corridor × window appears in the CSV
+  even if empty, with n = 0") — **PASS**, 8/8 present, asserted in code and
+  independently confirmed.
+- **G6 / G7 embargo** — **PASS**. No nation-level number is reported for any
+  foreign nation (there are none to report); corridor 1 carries the FIX-02
+  caveat on every row; RU is flagged `match_sensitive_nation` (IR never appears
+  on an anchor corridor, correctly).
+- **G9 (traceability)** — **PARTIAL**, see blocking item 2 and advisory A6.
+
+### Findings — BLOCKING
+
+**B1. `raw_wedge_diffs.csv` ships the wedge's treated arm as a populated,
+plottable column under a treatment label.** `mean_excess_banned` is non-null in
+226 of 364 rows and is numerically the US corridor excess series (max abs
+difference **8.9e-16** against `raw_wedge_by_corridor.csv`'s
+`excess_min_w_wtd` for `nation == 'US'`, all 364 rows, null patterns identical).
+The whole purpose of this file, per the ruling, is to prove the wedge is
+uncomputable; it currently also hands a reader a treated-group time path that
+plots in one line of pandas. The `definition` disclosure is unusually good and
+`n_nations_banned_with_data` never exceeds 1, but the protection is prose in a
+column most readers never print, while the risk is in a column *name*. The
+ruling specified "every row's `n_treated`/`n_control` plus a NaN `diff`" — the
+group-mean columns are an addition beyond spec, and the one that is populated is
+the one that can be misread as the result.
+*Required:* either null the four `mean_excess_*` columns (the counts already
+carry the completeness content) or rename `mean_excess_banned` so its content is
+unmistakable in the header itself (e.g.
+`mean_excess_banned_side_US_ONLY_NOT_A_RESULT`), and add an in-code assert that
+no `mean_excess_*` column is non-null for a group with
+`n_nations_*_with_data > 1` while FIX-02 is blocked.
+
+**B2. The `definition` string does not describe the code.** It states the
+pooling is "weighted by `departures_airborne_eligible`". The code
+(`06_wedge_availability.py`, the `groups[status]` block) weights nation-level
+means by `n_cells_excess_valid`. The two coincide here only because at most one
+nation ever has data (I verified the identity holds in all 364 rows) — the
+stated definition would be simply wrong the moment a second nation reported. A
+definition column that misdescribes its own computation is the exact failure G9
+exists to prevent, and this one is the file's only defence against misreading.
+*Required:* make the text describe the code, or make the code match the text.
+
+**B3. The fourth deliverable shipped is not the fourth deliverable commissioned,
+and the substitution blanks the event window.** The ruling's item 4 is a US-only
+**raw-level** series (departures-weighted mean `airborne_min_mean` by corridor ×
+month). What shipped plots `excess_min_w` only. In
+`raw_wedge_by_corridor.csv`, US `excess_min_w_wtd` is non-null in 52/52/45/43
+full-window months (useastasia / useurope_placebo / usindia / usmideast) with
+**only January and February present in all of 2022 and 2023**, whereas
+`airborne_min_mean_wtd` is non-null in **72/72, 72/72, 67/72 and 71/72** months
+— including 2022-03 (useastasia 656.77, useurope_placebo 481.20, usindia
+908.79, usmideast 666.18). The excess panel is permitted by the ruling's
+conditional clause and carries its two gaps correctly, so the defect is not that
+it exists; it is that the commissioned raw-level series was *replaced* rather
+than added, leaving the round with no picture of the one outcome it can actually
+observe across the event. As it stands the round's only time-series figure is
+blank for 20 of the 24 months 2022-03…2023-12.
+*Required:* add the raw-level `airborne_min_mean_wtd` panel (same 2×2 layout,
+2022-02 line, "US carriers only — not a cross-national comparison" title); keep
+the excess panel alongside if wanted.
+
+### Findings — ADVISORY (carry forward; none blocks)
+
+**A1. `departures_performed_month_sum` is a matched-carrier count and the CSV
+never says so.** On useastasia it omits 28,506 of 436,176 class-F corridor
+departures (6.54%): Asiana 22,793, Jin Air 3,648, Starlux 2,065. KR therefore
+reads 55,197 where the raw file has 81,638 (67.6%) and TW 45,071 of 47,136
+(95.6%). The corridor-level `fix02_caveat` names Asiana and quotes exactly these
+rates, so nothing is hidden — but the column semantics should be stated in the
+CSV, and the other three corridors carry no such note (their residual is 25 and
+0 departures, so a one-line "matched carriers only" note suffices).
+
+**A2. Two of the 3,780 n=0 rows are false zeros against raw T-100.**
+useurope_placebo/AR has 1 real departure (LAN Argentina) in a month the CSV
+reads 0, and Portugal (World2Fly, 2 departures) is absent from the corridor's
+nation universe entirely. Precision of the n=0 claim is 3,778/3,780 at the
+matched grain; 3 departures out of 818,597 on that corridor. The reason string
+"this operator nation flew no corridor route this month" should read "no
+matched-carrier departures this month".
+
+**A3. No seasonality caveat on `n_routes_active` / `n_routes_total`.** FIX-04
+advisory A3 (79% of "exits" are seasonal) is not strictly triggered — no
+entry/exit flag is used and there is no event-study use — but the monthly active
+route count is a seasonal schedule count and FINDINGS must say so in one line.
+
+**A4. Free y-axis limits across the four panels** of `fig_us_only_corridor_series.png`
+(the round file's step 2 asked for fixed limits so panels are comparable).
+usindia's ±60-minute axis is driven by two points (2023-01, 2023-02, 55.86 and
+~56 in `raw_wedge_by_corridor.csv`) that sit off a 2–3 observation baseline
+(FIX-05 advisory). Nothing may be said about them.
+
+**A5. Write-before-assert, fourth occurrence.** Under mutation (c) the script
+wrote a `raw_wedge_diffs.csv` with 226 non-null diffs to disk and then exited 1.
+Same pattern as FIX-01 advisory 1, FIX-04 A5, FIX-05.
+
+**A6. STATUS.md types four numbers** (nations per corridor: 23, 30, 9, 2) with
+no `(file.csv, row)` trace. They are correct — I checked all four — but the
+convention is that numbers are written only by code.
+
+**A7. `fig_us_only_corridor_series.png` carries no "not a headline / corridor-1
+embargoed" note.** The US series is unaffected by the FIX-02 mapping (US
+carriers match by construction), which is the right answer — but the figure
+should say it rather than leave a reader to infer it.
+
+### What was verified correct and needs no change
+
+The governing fact and its three runtime guards; the full 4 × 2 × nation × month
+family with genuine n=0 rows and a per-row reason trace that reproduces exactly
+from the row's own columns; the extensive margin (exact to the raw file); every
+weighted statistic (correct denominator, exact to 1e-13); the two-block blackout,
+annotated as two blocks in code, in the CSV's reason text and in the rendered
+figure; the ICN/TPE caveat sourced live and exactly right; determinism and
+isolation; both checkers at exit 0; the prohibition honoured in substance, not
+only in filenames.
+
+### NEW-06 block for ROUND_01_FINDINGS.md (G9-traced; use verbatim once B1–B3 land)
+
+**The comparison this task was commissioned to make cannot be made, and the
+reason is in the data, not in our method.** NEW-06 was to plot airborne minutes
+by operator nationality on four US-international corridors around February 2022.
+Foreign airlines do not report airborne time to BTS at all: in
+`coverage_by_carrier_group.csv`, **0 of 1,133,545** foreign-carrier-group
+segment-months 1990–2025 have `AIR_TIME > 0`. On the four anchor corridors this
+leaves **5,460 of 5,824** corridor × nation × month rows in
+`raw_wedge_by_corridor.csv` with no outcome value at all — not a small sample, an
+empty one. No mapping fix and no estimator can recover it; the only US-comparable
+measurement of foreign flight times would have to come from another source
+(this is what the Phase-2 OpenSky idea in PROJECT.md is for).
+
+**What the round can honestly say instead, all of it traced:**
+1. *Who is observable.* `raw_wedge_by_corridor.csv`: airborne time is
+   computable in **358** of 5,824 corridor × nation × month rows, and every one
+   of them is `nation == 'US'` (rows with `airborne_min_mean_wtd` non-null).
+   Excess minutes are computable in **226** rows, again all US
+   (`reason_missing == 'observable'`).
+2. *Why each empty cell is empty.* Every row carries a reason:
+   **3,780** rows have no departures at all that month; **1,685** are foreign
+   carriers that flew but report no airborne time
+   (`foreign_structural_nonreporting`); **120** are US months inside the two
+   baseline blackouts; **12** are US months that fail the baseline for other
+   reasons; **1** is a US month whose cells were too small to measure
+   (usmideast, 2021-02, 11 departures).
+3. *The event window is the darkest part of the record.* US excess minutes exist
+   for only January and February of 2022 and of 2023 on every corridor; the
+   blackout is **two ten-month blocks** (2022-03…2022-12 and 2023-03…2023-12),
+   not one, because the trailing three-year, COVID-excluded baseline needs two
+   candidate months and only January/February reach back past the COVID bar.
+   Raw airborne minutes, by contrast, are available for **72 of 72** months on
+   useastasia and useurope_placebo, 71 of 72 on usmideast and 67 of 72 on
+   usindia.
+4. *The difference table is a record of an absence, not a result.*
+   `raw_wedge_diffs.csv` has **364** rows and
+   `diff_banned_minus_not_banned` is empty in **all 364**, including every row of
+   the placebo corridor: the non-banned side is entirely non-US and therefore
+   never has data. The file's `status` column says so on every row. The ban list
+   it uses (`data/raw/events/ban_nations_2022.csv`) was drafted by an agent and
+   has not been reviewed by a human; "voluntary avoidance" is kept as its own
+   category and never pooled with "banned".
+5. *One corridor is embargoed.* Every useastasia row carries the FIX-02 caveat:
+   the foreign-carrier match rate at Seoul/Incheon is **0.6753**
+   (precision-adjusted **0.6572**) against **0.9562** at Taipei and ≥ 0.956
+   everywhere else (`carrier_nation_corridor_coverage.csv`, full-window rows),
+   because Asiana's flights never enter the matched population. Corridor 1
+   numbers may be computed but not reported until a human rules on FIX-02.
+6. *Route and departure counts are observable for everyone* and are carried in
+   the same file, but the monthly active-route count is a seasonal schedule
+   count, not market entry and exit, and no event study is run on it here.
+
+**Glossary for this block.** *Corridor* = a set of US↔foreign airport pairs,
+both directions. *Airborne time* = minutes wheels-off to wheels-on, averaged over
+a route-month and weighted by the departures that actually reported it. *Excess
+minutes* = airborne minutes minus the same route-month's own three-year median
+in the same calendar month, with COVID months excluded from that median.
+*Blackout* = months where that median could not be computed from at least two
+clean prior years. *Placebo corridor* = US–Western Europe, chosen because no
+differential overflight ban applies there, so it is where we expect to see
+nothing.
+
+**VERDICT: FAIL** — three blocking items (B1–B3), all additive: two are text /
+column-naming fixes to `raw_wedge_diffs.csv`, one adds a panel that the existing
+CSV already contains the numbers for. **No shipped number is wrong**; every
+value in both CSVs and both figures reproduced exactly from the parquets, the
+prohibition on the five wedge figures held in substance as well as in filenames,
+and the documented null is the right call and is honestly presented.
+
+## NEW-06 review (reduced form) — CYCLE 2 of max 3 — 2026-09-02 05:35 UTC
+
+**Scope.** Confirm only that the cycle-1 blocking items B1–B3 landed and that
+nothing previously verified was disturbed. Cycle-1 verifications (extensive
+margin, n=0 family and `reason_missing` derivation, weight identity, ICN/TPE
+embargo, two blackout blocks, substance of the wedge-figure prohibition) are
+**not re-litigated**; they were re-confirmed only insofar as the cycle-2 diff
+could have touched them. No analysis code was modified by the overseer; all
+mutation tests ran on copies in `/tmp/rv6c`, `/tmp/rv6d`, `/tmp/rv6e`.
+
+VERDICT: PASS
+
+### Checks run (numbers recomputed by me from parquet/CSV, not read from a log)
+
+**D0. Nothing previously verified moved.** Column-by-column comparison of
+`raw_wedge_by_corridor.csv` against my retained cycle-1 copy
+(`/tmp/rev06/rounds/round-1-t100-panel/`), on the identical 5,824-row index:
+**every** cycle-1 column identical — `n_routes_active`, `n_routes_total`,
+`departures_performed_month_sum`, `n_cells_matched`, `n_cells_airborne_valid`,
+`airborne_min_mean_wtd`, `n_cells_excess_valid`, `excess_min_w_wtd`,
+`n_cells_bidir_valid`, `bidir_sum_wtd` at max abs diff **0.0** with identical
+null patterns, and `covid_flag` / `in_excess_blackout` /
+`match_sensitive_nation` / `reason_missing` / `fix02_caveat` / `sample`
+byte-equal. The cycle-2 change to this file is purely additive: one weight
+column and three note columns. `fig_data_availability.png` is **byte-identical**
+to its cycle-1 file.
+
+**D1. B2 — the code now does what the `definition` says, and the shipped values
+did not move.** (a) I rebuilt `departures_airborne_eligible_excess_sum` from
+`panel_excess.parquet` (sum of `departures_airborne_eligible` over cells with a
+non-null `excess_min_w`, by corridor × nation × year × month): max abs diff
+**0.0** on 5,824 rows; non-zero in exactly **226** rows, i.e. only where an
+excess exists. (b) I re-pooled the four ban-status groups myself under BOTH
+weightings. Shipped
+`mean_excess_banned_side_US_ONLY_NOT_A_RESULT` matches my departures-weighted
+reconstruction to **2.2e-16** with identical null pattern (226/364 non-null),
+and matches the cycle-1 cell-count weighting to **8.9e-16** — the two weightings
+are analytically identical here because at most one nation ever contributes, and
+they differ only at ulp scale. (c) The implementer's specific claim is exactly
+true and slightly understates the improvement: shipped
+`mean_excess_banned_side_US_ONLY_NOT_A_RESULT` now equals
+`raw_wedge_by_corridor.csv`'s US `excess_min_w_wtd` at max abs diff **0.0**
+(226/226 rows bit-equal), where the cycle-1 file was 8.9e-16 off. All four
+`n_nations_*_with_data` columns reproduce with **0** mismatches;
+`diff_banned_minus_not_banned` is null in **364/364**. **B2 discharged.**
+
+**D2. B1 — rename judged, and the new assert mutation-tested.** All four columns
+carry the `_side_US_ONLY_NOT_A_RESULT` suffix in the header; the two new
+`n_nations_{voluntary_avoidance,unclassified}_with_data` columns were added so
+the guard covers all four groups. Mutation test (`/tmp/rv6c`): I cloned the US
+family rows as nation `DE` (status `banned` in `ban_nations_2022.csv`), injected
+**after** the governing-fact guard so the B1 check is isolated. Result: exit
+**1**, message "B1 VIOLATION: 226 rows … `mean_excess_banned_side_US_ONLY_NOT_A_RESULT`
+non-null with `n_nations_banned_with_data` > 1 … Refusing to write the file", and
+the md5 of `raw_wedge_diffs.csv` was **unchanged** — this guard sits before
+`to_csv` and genuinely refuses to write, unlike the write-before-assert pattern
+carried as advisory A5 elsewhere. **Ruling on the substance (mine, explicit):
+the rename is ACCEPTED.** Reasons: (i) it is verbatim the option my cycle-1
+required action offered; (ii) the header is now self-describing — the string
+`US_ONLY_NOT_A_RESULT` travels into any axis label, legend or regression output
+a reader could produce from it, which prose in a `definition` cell does not;
+(iii) the "only one nation is behind this column" claim is no longer prose but a
+runtime invariant that refuses to write, and I have proved it fires; (iv)
+nulling the column would have destroyed the completeness content — a reader
+could no longer verify that the treated side has exactly one nation with data
+and that its values coincide with the US series, which is the file's entire
+purpose. **Standing condition attached:** the column's values may never enter
+`paper/`, `slides/`, PROJECT_STATE or FINDINGS as a level, a change or a sign;
+FINDINGS may cite only its non-null **count** (226) and the fact that it is the
+US series. **B1 discharged.**
+
+**D3. B3 — raw-level panel present, correct, and additive.**
+`figures/fig_us_only_corridor_series_airborne.png` plots `airborne_min_mean_wtd`
+(confirmed in code at the `_plot_us_only_panel(value_col="airborne_min_mean_wtd" …)`
+call and by eye against the CSV). Non-null months in the full window, recomputed
+from `raw_wedge_by_corridor.csv`: useastasia **72/72**, useurope_placebo
+**72/72**, usindia **67/72**, usmideast **71/72** — as claimed. Across the
+event window 2022-03…2023-12 the raw series is non-null **22/22 on all four
+corridors**, against 4/22 for the excess series: the cycle-1 defect (the round's
+only time-series figure blank for 20 of 24 event-window months) is fully cured.
+useastasia 2022-03 = **656.77345309** (`raw_wedge_by_corridor.csv`, corridor
+useastasia / window full_2019_2024 / nation US / 2022-03), matching the claimed
+≈656.8 and my cycle-1 number. Title line 1 reads "US carriers only -- not a
+cross-national comparison"; sample named; 2022-02 dashed line present; gaps in
+usindia/usmideast render as breaks, not interpolation; nothing clipped
+(`bbox_inches="tight"`). The excess panel was **kept**, not replaced
+(`fig_us_only_corridor_series_excess.png`, both red blackout blocks with the
+visible white 2023-01/02 gap, verified as a rendered image). The stale
+`fig_us_only_corridor_series.png` is gone from the round folder and from git;
+the runtime deletion is mutation-tested — I planted a file under that name in an
+isolated root, re-ran, and it was removed with the log line naming both
+successors. **B3 discharged**, with advisory A8 below.
+
+**D4. The `NameError` claim — refuted as applied to the reviewed cycle-1 code.**
+I still hold the cycle-1 script (`/tmp/rev06/orig.py`, the exact file whose
+outputs I proved byte-identical to the cycle-1 round folder). It defines
+`FIG_US_ONLY` at line 82 and uses it at lines 601/603 — no undefined name. I
+re-ran it today in a fresh isolated root (`/tmp/rv6d`, only `data/raw`,
+`data/interim` and three seed CSVs): exit **0**, both cycle-1 figures written.
+So no latent crash existed in the code I reviewed; the `NameError` was
+introduced by the cycle-2 rename of the constant and fixed within cycle 2. The
+implementer's phrasing ("a latent `NameError` that would have crashed the run")
+is misleading if read as describing the cycle-1 script. **My cycle-1
+determinism and provenance finding stands unamended.**
+
+**D5. Determinism and provenance, re-established independently.** Fresh
+isolated root `/tmp/rv6c` (code copied, `data/raw` and `data/interim` symlinked,
+round folder seeded with only `carrier_nation_corridor_coverage.csv`,
+`coverage_by_carrier_group.csv`, `extensive_margin_churn.csv`): exit **0**, and
+all five artifacts **byte-identical** (`cmp`) to the round folder —
+`raw_wedge_by_corridor.csv`, `raw_wedge_diffs.csv`, `fig_data_availability.png`,
+`fig_us_only_corridor_series_airborne.png`,
+`fig_us_only_corridor_series_excess.png`. Nothing was written outside
+`rounds/round-1-t100-panel/`.
+
+**D6. The three new note columns are accurate.** Recomputed from
+`t100_raw.parquet` × `carrier_nation.parquet` with no reference to the script:
+useastasia raw class-F 2019-2024 = **436,176**, matched **407,670**, unmatched
+**28,506** = **0.0654** share, top unmatched OZ=**22,793**, LJ=**3,648**,
+JX=**2,065** — every figure exact; usindia 31,788/0, usmideast 202,818/0,
+useurope_placebo 818,597 / 23 unmatched (E9=14, BF=5, EB=3) — exact. The
+seasonality note's **80,260** exits / **63,255** re-entering / median **5** of
+432 active months trace exactly to `extensive_margin_churn.csv` (rows `n_exits`,
+`n_exits_reentering_ever`, `active_months_per_triple_median`). The false-zero
+note is accurate as written and I reconstructed both cases: the AR cell is
+carrier `4M` (LAN Argentina, OpenFlights country Argentina) MIA–MAD 2019-10, **1**
+departure, refused at FIX-02 as a suffix collision and therefore absent from the
+grid while AR exists in the grid's nation universe; the PT case is `WPT`
+(World2Fly Portugal) MCO–MAD + MAD–MCO 2024-03, **2** departures, and PT is
+indeed absent from the corridor's nation universe. Both are sub-3-departure edge
+cases against 818,597 corridor departures.
+
+**D7. Pathology sweep and gates.** All 29 round CSVs re-scanned directly (not a
+manifest): no `coef`/`se`/`pval` column exists anywhere in the round — this task
+estimates nothing; no p-values, so no p=0.0 and no repeated-p family; no
+share/rate column outside [0,1]; no empty cells in any statistic column (nulls
+are the deliverable and each carries a `reason_missing` trace); largest
+magnitudes are counts (departures, bytes) and minute-scale means
+(`airborne_min_mean_wtd` ∈ [468.65, 916.58], physically sane for 8–15h sectors).
+`departures_airborne_eligible_excess_sum` ∈ [0, 7,978], 0 nulls. No
+`fig_raw_wedge_*.png` anywhere in the repo (`find` → 0 hits) and the script's
+end-of-run guard is unchanged. `python code/99_validate_outputs.py` → **29 CSVs,
+0 FAIL, 0 WARN, exit 0**; `python code/98_check_trino_usage.py` → **0 FAIL, exit
+0**. Every number in the final run-log block located in data: 1,026,729 /
+8,810,640 parquet rows, 457,018 non-US matched cells with 0 non-null airborne
+and 0 `coverage_ok`, 194,889 / 965,520 corridor-restricted rows, 114,993 non-US
+corridor cells, 0 of 1,133,545 `carrier_group==0` rows with `AIR_TIME>0`, 5,824
+family rows, 3,780 n=0 rows, 364 diff rows — all reproduced.
+
+### Gate status
+
+- **G1** (no empty coef/se/pval; pval ∈ [0,1]) — **N/A, correctly**: no
+  inference is performed and no such column exists.
+- **G2** (no |coef| > 100 on log/share outcomes) — **PASS**: no log/share
+  outcome; minute-scale values physically sane.
+- **G3** (no p = 0.0, no repeated p) — **N/A** (no p-values).
+- **G4** (SE scale) — **N/A** (no SEs).
+- **G5** (shares ∈ [0,1]; families report full cell counts) — **PASS**: 5,824 of
+  5,824 cells reported, including 3,780 zeros and 5,460 structurally empty
+  non-US rows; 0 non-US rows carry any non-null statistic.
+- **Round-specific NEW-06 gate** (every corridor × window in the CSV even if
+  empty, n = 0 included) — **PASS**, 8/8, asserted in code and confirmed.
+- **G6 / G7 embargo** — **PASS**: no foreign nation-level number is reported
+  (none exists); every useastasia row carries the FIX-02 caveat with ICN
+  0.675340 / precision-adjusted 0.657241 and TPE 0.956194 pulled live from
+  `carrier_nation_corridor_coverage.csv`; RU/IR flagged `match_sensitive_nation`.
+- **G9 (traceability)** — **PASS** (upgraded from cycle-1 PARTIAL): the
+  `definition` string now describes the computation it performs, verified
+  numerically, and the three advisory notes are recomputable from the round's own
+  CSVs.
+
+### Findings — no blocking items
+
+**A8 (new, advisory).** `fig_us_only_corridor_series_airborne.png` inherits
+`ax.axhline(0, …)` from the excess panel. On a raw-level series of 470–920
+minutes this forces every y-axis to start at 0, so the entire series is
+compressed into the top ~15% of each panel and the event-window movement the
+figure exists to show is barely readable. The figure is correct, unclipped and
+not misleading — this is legibility, not validity — but it must be fixed
+(drop the zero line and/or set per-panel limits from the data) before this
+figure enters `paper/` or `slides/`. Cycle-1 advisory A4 (free y-limits across
+panels) still applies to the excess panel.
+
+**A9 (new, advisory).** `departures_scope_note` defines "matched" as
+FIX-02-mapped, which includes the icao match tier; the grid itself drops the
+icao tier (`code/04_panel/04_build_panel.py` line 126, per the round-file
+override). On useurope_placebo the note therefore says matched = **818,574**
+while the grid sums to **818,572**. The gap is exactly **2** departures on one
+corridor (the `WPT` pair below); every other corridor has **0** icao-tier
+departures and reconciles exactly. Wording fix only: "matched and retained
+(icao tier dropped)".
+
+**A10 (new, advisory — belongs in the FIX-02 human decision packet).** Two
+concrete mis-mappings surfaced while auditing the note columns, both on the
+placebo corridor: `N0` → **AR** via the *iata* tier (OpenFlights has N0 = Norte
+Lineas Aereas / Argentina; the 2023–2024 T-100 rows are JFK/MIA/LAX–CDG, i.e.
+Norse Atlantic, Norway) — this single code carries **all 1,380** of the corridor's
+"AR" departures; and `WPT` → **CA** via the *icao* tier (World2Fly Portugal, 2
+departures). Neither affects any reported number — foreign nation-level values
+are structurally empty and embargoed — but the nation labels in
+`raw_wedge_by_corridor.csv` must not be read as nationality, and both are fresh
+evidence for the precision reading of G7.
+
+**A11 (new, advisory).** A third false zero exists that the note does not name:
+`raw_wedge_by_corridor.csv` (useurope_placebo, CA, full_2019_2024, 2024-03)
+reads `departures_performed_month_sum` = 0 against **2** matched departures in
+`t100_raw.parquet` — the same `WPT` pair, seen from the mapped-nation side. At
+the matched grain the n=0 claim is therefore **3,779 of 3,780** rows verified
+true; no nation is missing from any corridor's universe under the current
+mapping (0 right-only cells in my full outer join).
+
+**Carried forward unchanged from cycle 1:** A1 (matched-carrier scope of the
+departures counts — now largely discharged by `departures_scope_note`), A3
+(seasonality — discharged by `extensive_margin_seasonality_note`), A4 (free
+y-limits), A5 (write-before-assert: still true of `raw_wedge_by_corridor.csv`,
+which is written before the diffs-stage guards; **not** true of the new B1
+guard), A6 (STATUS.md types "23, 30, 9, 2" with no trace — and its 03:00 entry
+still names the now-deleted `fig_us_only_corridor_series.png`; the cycle-2
+STATUS entry must supersede both), A7 (the US-only figures carry no "not a
+headline / corridor-1 embargoed" note).
+
+**VERDICT: PASS** — B1, B2 and B3 all discharged; the fixes are additive; every
+cycle-1-verified value is bit-identical; the new weight column, the three note
+columns and both new figures reproduce exactly from the parquets; determinism
+re-established from an empty root; both checkers exit 0; the wedge-figure
+prohibition still holds in substance. NEW-06 remains a documented null and is
+never a headline.
