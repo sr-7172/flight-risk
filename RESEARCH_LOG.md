@@ -103,3 +103,22 @@ holds: build only what is observable, report nothing nation-level, no
 headline from this round. The single highest-value action available is
 starting the attended Phase-2 OpenSky extract — ADS-B observes every
 operator's airborne time regardless of BTS forms.
+
+## 2026-09-04 — Human rulings on D-01 and D-02; Round 2 drafted
+
+The human ruled D-01 as option (b), precision reading, curated table
+built later in an attended web session, and D-02 as option (C),
+OpenSky ADS-B as the primary source for the wedge (see DECISIONS.md for
+both rulings). Round 2 (`rounds/round-02-opensky-extract/ROUND_02.md`,
+drafted by the human with Claude rather than by /plan-round) is the
+Phase-2 extract round: attended pilot and full corridor flight-list
+pulls from `flights_data4` under T1–T9, the attended web session that
+produces the carrier table, then unattended construction of the
+flight-level table, the capture-rate audit against T-100 departures,
+the route × nation × day panel, the raw wedge pictures on ADS-B, the
+canonical DiD, and the overflight/detour calibration from the compressed
+`track` field. Departure from ROUND_01_FINDINGS next steps: item 3
+(spell-based extensive margin) and item 4 (US-only T-100 raw-level
+pictures) are deferred, not dropped, because the human does not want
+further T-100 effort while the primary outcome is unobservable there.
+No result numbers appear in this entry (D-06 pending).
